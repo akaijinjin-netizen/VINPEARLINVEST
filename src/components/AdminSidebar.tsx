@@ -196,7 +196,7 @@ export default function AdminSidebar() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     padding: '10px 12px',
                     borderRadius: 8,
                     marginBottom: 4,
