@@ -24,7 +24,7 @@ export default function Pagination({
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      justify: 'space-between',
+      justifyContent: 'space-between',
       padding: '14px 20px',
       background: 'white',
       borderTop: '1px solid #E5E7EB',
@@ -40,17 +40,17 @@ export default function Pagination({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           style={{
-            background: currentPage === 1 ? '#F3F4F6' : 'white',
-            color: currentPage === 1 ? '#9CA3AF' : '#374151',
-            border: '1px solid #E5E7EB',
-            borderRadius: 8,
             padding: '6px 12px',
-            fontWeight: 600,
+            border: '1px solid #E5E7EB',
+            borderRadius: 6,
+            background: currentPage === 1 ? '#F9FAFB' : 'white',
+            color: currentPage === 1 ? '#9CA3AF' : '#374151',
             cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s',
+            fontSize: 13,
+            fontWeight: 600,
           }}
         >
-          ‹ Trước
+          ← Trước
         </button>
 
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -58,15 +58,15 @@ export default function Pagination({
             key={page}
             onClick={() => onPageChange(page)}
             style={{
-              background: currentPage === page ? '#C8102E' : 'white',
-              color: currentPage === page ? 'white' : '#374151',
-              border: currentPage === page ? 'none' : '1px solid #E5E7EB',
-              borderRadius: 8,
-              minWidth: 32,
+              width: 32,
               height: 32,
-              fontWeight: 700,
+              border: page === currentPage ? 'none' : '1px solid #E5E7EB',
+              borderRadius: 6,
+              background: page === currentPage ? '#C8102E' : 'white',
+              color: page === currentPage ? 'white' : '#374151',
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              fontSize: 13,
+              fontWeight: page === currentPage ? 700 : 500,
             }}
           >
             {page}
@@ -77,17 +77,17 @@ export default function Pagination({
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           style={{
-            background: currentPage === totalPages ? '#F3F4F6' : 'white',
-            color: currentPage === totalPages ? '#9CA3AF' : '#374151',
-            border: '1px solid #E5E7EB',
-            borderRadius: 8,
             padding: '6px 12px',
-            fontWeight: 600,
+            border: '1px solid #E5E7EB',
+            borderRadius: 6,
+            background: currentPage === totalPages ? '#F9FAFB' : 'white',
+            color: currentPage === totalPages ? '#9CA3AF' : '#374151',
             cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s',
+            fontSize: 13,
+            fontWeight: 600,
           }}
         >
-          Sau ›
+          Sau →
         </button>
       </div>
     </div>
