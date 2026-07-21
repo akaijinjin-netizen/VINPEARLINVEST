@@ -1,0 +1,21 @@
+{
+  "name": "Vinpearl Invest",
+  "short_name": "Vinpearl",
+  "description": "Nền tảng đầu tư nghỉ dưỡng Vinpearl cao cấp",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#C8102E",
+  "theme_color": "#C8102E",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
