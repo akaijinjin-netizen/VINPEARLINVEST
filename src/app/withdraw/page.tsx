@@ -85,8 +85,8 @@ export default function WithdrawPage() {
           user_id: profileId,
           amount: withdrawVal,
           bank_name: bankName,
-          bank_account_name: accountName,
-          bank_account_number: accountNumber,
+          account_name: accountName,
+          account_number: accountNumber,
           status: 'pending'
         })
 

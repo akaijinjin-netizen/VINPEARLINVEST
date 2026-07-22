@@ -85,7 +85,7 @@ export default function AdminUsersPage() {
           totalWithdrawn: p.wallets?.total_withdrawn || 0,
           status: (p.status as any) || 'active',
           createdAt: p.created_at ? p.created_at.split('T')[0] : '2026-07-21',
-          bankName: p.bank_name || '',
+          bankName: p.bank_name ? p.bank_name.trim() : '',
           bankAccountName: p.bank_account_name || '',
           bankAccountNumber: p.bank_account_number || '',
           vipLevel: p.vip_level ?? 0,
@@ -134,7 +134,7 @@ export default function AdminUsersPage() {
       fullName: user.fullName,
       phone: user.phone,
       newPassword: user.password || '',
-      bankName: user.bankName || 'Vietcombank',
+      bankName: user.bankName?.trim().toUpperCase() || '',
       bankAccountName: user.bankAccountName || user.fullName.toUpperCase(),
       bankAccountNumber: user.bankAccountNumber || '',
       vipLevel: user.vipLevel ?? 0,
@@ -474,14 +474,16 @@ export default function AdminUsersPage() {
 
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Tên ngân hàng</label>
-                  <select
+                  <input
+                    list="banks-datalist"
                     value={editForm.bankName}
                     onChange={e => setEditForm(p => ({ ...p, bankName: e.target.value }))}
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none' }}
-                  >
-                    <option value="">-- Chưa liên kết --</option>
-                    {BANKS_LIST.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
+                    placeholder="Nhập tên ngân hàng..."
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <datalist id="banks-datalist">
+                    {BANKS_LIST.map(b => <option key={b} value={b} />)}
+                  </datalist>
                 </div>
 
                 <div style={{ marginBottom: 12 }}>

@@ -49,8 +49,8 @@ export default function AdminWithdrawalsPage() {
           user: w.profiles?.phone || 'N/A',
           amount: w.amount || 0,
           bank: w.bank_name || 'Vietcombank',
-          accountName: w.bank_account_name || '',
-          accountNo: w.bank_account_number || '',
+          accountName: w.account_name || w.bank_account_name || '',
+          accountNo: w.account_number || w.bank_account_number || '',
           time: w.created_at ? w.created_at.replace('T', ' ').slice(0, 16) : 'Vừa xong',
           status: w.status as Status
         }))
