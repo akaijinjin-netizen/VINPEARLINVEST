@@ -1,6 +1,25 @@
 // Dữ liệu các dự án Vingroup QPL thật - Tra cứu với văn bản pháp lý & Quyết định chính thức từ Chính phủ / UBND
 export const SEED_PROJECTS = [
   {
+    id: 'trial_1m',
+    project_code: 'MSDA-TRIAL-1M',
+    legal_doc: 'Quyết định thử nghiệm số 01/QĐ-VINGROUP',
+    name: 'Gói đầu tư trải nghiệm siêu ngắn hạn (1 Phút)',
+    location: 'Hà Nội',
+    description: 'Gói đầu tư đặc biệt hỗ trợ khách hàng thử nghiệm hệ thống. Lợi nhuận và tiền gốc sẽ tự động cộng lại vào tài khoản chỉ sau đúng 1 phút.',
+    image_url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&q=80',
+    daily_profit_rate: 1.5,
+    investment_cycle_minutes: 1,
+    min_investment: 100000,
+    project_scale: 1000000000,
+    progress_percent: 50,
+    status: 'active',
+    dividend_per_cycle: 1500,
+    profit_method: 'Gói thử nghiệm nhận lãi và gốc sau 1 phút.',
+    highlights: ['Thử nghiệm nhanh 1 phút', 'Nhận gốc và lãi tức thì', 'Tối thiểu chỉ 100k'],
+    risk_level: 'Bảo vệ vốn 100%',
+  },
+  {
     id: 'vinschool',
     project_code: 'MSDA-VS-2026',
     legal_doc: 'Quyết định số 2256/QĐ-UBND Hà Nội',

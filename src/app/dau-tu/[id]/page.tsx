@@ -1,21 +1,25 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SEED_PROJECTS } from '@/lib/data/projects'
+import { createClient } from '@/lib/supabase/client'
 
 function formatCurrency(n: number) {
+  if (!n) return '0 VND'
   if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(0) + ' tỷ VND'
   if (n >= 1_000_000) return (n / 1_000_000).toLocaleString('vi-VN') + ' VND'
   return n.toLocaleString('vi-VN') + ' VND'
 }
 
 function formatCurrencyShort(n: number) {
+  if (!n) return '0 VND'
   if (n >= 1_000_000) return (n / 1_000_000).toLocaleString('vi-VN') + ' triệu VND'
   return n.toLocaleString('vi-VN') + ' VND'
 }
 
 function formatMinutes(m: number) {
+  if (!m) return '0 phút'
   if (m >= 1440) return Math.floor(m / 1440) + ' ngày'
   if (m >= 60) return Math.floor(m / 60) + ' giờ'
   return m + ' phút'
@@ -23,16 +27,58 @@ function formatMinutes(m: number) {
 
 export default function InvestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const project = SEED_PROJECTS.find(p => p.id === id) || SEED_PROJECTS[0]
+  
+  const [project, setProject] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
 
+  useEffect(() => {
+    async function loadProject() {
+      try {
+        const supabase = createClient()
+        const { data: dbProj, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (!error && dbProj) {
+          setProject(dbProj)
+        } else {
+          // Fallback to static SEED_PROJECTS
+          const matched = SEED_PROJECTS.find(p => p.id === id) || SEED_PROJECTS[0]
+          setProject(matched)
+        }
+      } catch (e) {
+        console.error('Error loading project detail:', e)
+        const matched = SEED_PROJECTS.find(p => p.id === id) || SEED_PROJECTS[0]
+        setProject(matched)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProject()
+  }, [id])
+
   const handleCopyCode = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(project.project_code)
+    if (project && navigator.clipboard) {
+      navigator.clipboard.writeText(project.project_code || 'MSDA-VINGROUP')
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
   }
+
+  if (loading || !project) {
+    return (
+      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'white' }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#6B7280' }}>Đang tải chi tiết dự án...</div>
+      </div>
+    )
+  }
+
+  const highlightsList = Array.isArray(project.highlights) 
+    ? project.highlights 
+    : ['Tra cứu pháp lý minh bạch', 'Bảo toàn nguồn vốn 100%', 'Lợi nhuận thanh toán định kỳ'];
 
   return (
     <div className="app-container" style={{ background: '#F5F5F5' }}>
@@ -59,7 +105,7 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
       <div style={{ position: 'relative', height: 260, overflow: 'hidden' }}>
         <img
           src={project.image_url}
-          alt={project.name}
+          alt={project.name || project.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
         <div style={{
@@ -71,7 +117,7 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
           color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end'
         }}>
           <div>
-            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>📍 {project.location}</div>
+            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>📍 {project.location || 'Hà Nội'}</div>
           </div>
           <div style={{
             background: 'linear-gradient(135deg, #0F172A, #1E293B)',
@@ -93,7 +139,7 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
         }}>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', marginBottom: 16 }}>
-            {project.name}
+            {project.name || project.title}
           </h1>
 
           {/* Legal verification box */}
@@ -119,10 +165,10 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
               </button>
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#F0C040', letterSpacing: 1, marginBottom: 8, fontFamily: 'monospace' }}>
-              {project.project_code}
+              {project.project_code || 'MSDA-VINGROUP'}
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              📜 {project.legal_doc}
+              📜 {project.legal_doc || 'Quyết định đầu tư chính thức'}
             </div>
           </div>
 
@@ -139,7 +185,7 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
             }}>
               <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>Mỗi cổ tức</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: '#C8102E' }}>
-                {(project.dividend_per_cycle).toLocaleString('vi-VN')}
+                {project.dividend_per_cycle ? project.dividend_per_cycle.toLocaleString('vi-VN') : '0'}
               </div>
               <div style={{ fontSize: 12, color: '#C8102E', fontWeight: 600 }}>VND</div>
             </div>
@@ -158,11 +204,11 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
 
           {/* Details list */}
           {[
-            { label: 'Phương pháp chia lợi nhuận', value: project.profit_method },
+            { label: 'Phương pháp chia lợi nhuận', value: project.profit_method || 'Phân phối lợi nhuận hàng ngày' },
             { label: 'Số tiền đầu tư tối thiểu', value: formatCurrencyShort(project.min_investment) },
             { label: 'Quy mô dự án', value: formatCurrency(project.project_scale) },
-            { label: 'Lợi nhuận hàng ngày', value: `${project.daily_profit_rate}%` },
-            { label: 'Bảo hộ pháp lý & vốn', value: project.risk_level },
+            { label: 'Lợi nhuận hàng ngày', value: `${project.daily_profit_rate || 0}%` },
+            { label: 'Bảo hộ pháp lý & vốn', value: project.risk_level || 'Bảo vệ vốn 100%' },
           ].map((item, i) => (
             <div key={i} style={{
               display: 'flex',
@@ -186,10 +232,10 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
               marginBottom: 8, fontSize: 13
             }}>
               <span style={{ color: '#6B7280' }}>Tiến độ gọi vốn</span>
-              <span style={{ fontWeight: 700, color: '#C8102E' }}>{project.progress_percent}%</span>
+              <span style={{ fontWeight: 700, color: '#C8102E' }}>{project.progress_percent || 0}%</span>
             </div>
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${project.progress_percent}%` }} />
+              <div className="progress-fill" style={{ width: `${project.progress_percent || 0}%` }} />
             </div>
           </div>
         </div>
@@ -200,7 +246,7 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
         <div style={{ background: 'white', borderRadius: 16, padding: '16px' }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1A1A1A' }}>✨ Điểm nổi bật & Bảo chứng</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {project.highlights.map((h, i) => (
+            {highlightsList.map((h: any, i: number) => (
               <div key={i} style={{
                 background: '#FEF2F2',
                 color: '#C8102E',
