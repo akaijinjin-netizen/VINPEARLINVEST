@@ -116,7 +116,7 @@ export default function InvestmentOrderPage({ params }: { params: Promise<{ id: 
           amount: numAmount,
           interest_rate: dailyProfitRate,
           status: 'active',
-          start_time: new Date().toISOString()
+          // start_time is intentionally omitted - use created_at (server-set) to avoid client clock bugs
         })
 
       if (investErr) {
