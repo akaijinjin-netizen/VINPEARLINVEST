@@ -177,7 +177,7 @@ export default function HomePage() {
         }}>
           {[
             { icon: '🏖️', label: 'Dự án', href: '/dau-tu' },
-            { icon: '📥', label: 'Nạp tiền', href: '/deposit' },
+            { icon: '💬', label: 'CSKH', href: '/cskh' },
             { icon: '📤', label: 'Rút tiền', href: '/withdraw' },
             { icon: '🔔', label: 'Thông báo', href: '/notifications' },
           ].map((item, index) => (

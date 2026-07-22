@@ -262,16 +262,7 @@ export default function DepositPage() {
             </div>
           </div>
 
-          {/* Warning */}
-          <div style={{
-            background: '#FEF3C7', borderRadius: 12,
-            padding: '12px 16px', marginBottom: 16,
-            border: '1px solid #FDE68A'
-          }}>
-            <div style={{ fontSize: 13, color: '#92400E', lineHeight: 1.5 }}>
-              ⚠️ Vui lòng chuyển khoản đúng nội dung <strong>{transferContent}</strong> để hệ thống dễ dàng xác nhận. Sai nội dung sẽ gây chậm trễ xử lý.
-            </div>
-          </div>
+
 
           {/* Submit */}
           <button

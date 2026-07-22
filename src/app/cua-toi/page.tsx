@@ -57,17 +57,6 @@ const MENU_ITEMS = [
     )
   },
   {
-    href: '/deposit',
-    label: 'Tôi muốn gửi tiền',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="4" width="20" height="16" rx="2" />
-        <path d="M12 8v8" />
-        <path d="M8 12h8" />
-      </svg>
-    )
-  },
-  {
     href: '/withdraw',
     label: 'Tôi muốn rút tiền',
     icon: (
@@ -205,29 +194,9 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
-
-        {/* Right side icons */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {/* Calendar Icon */}
-          <div onClick={() => setShowEventModal(true)} style={{ color: 'white', cursor: 'pointer' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-          </div>
-          {/* Bell Icon */}
-          <div onClick={() => setShowNotifModal(true)} style={{ color: 'white', cursor: 'pointer', position: 'relative' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          </div>
-        </div>
       </div>
 
-      {/* Rút tiền / Gửi tiền Quick Actions Banner */}
+      {/* Rút tiền Quick Action Banner */}
       <div style={{
         display: 'flex',
         background: '#34455E',
@@ -245,21 +214,9 @@ export default function ProfilePage() {
           color: 'white',
           fontWeight: 700,
           fontSize: 14,
-          textDecoration: 'none',
-          borderRight: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          Rút tiền
-        </Link>
-        <Link href="/deposit" style={{
-          flex: 1,
-          textAlign: 'center',
-          padding: '12px 0',
-          color: 'white',
-          fontWeight: 700,
-          fontSize: 14,
           textDecoration: 'none'
         }}>
-          Gửi tiền
+          Rút tiền
         </Link>
       </div>
 
