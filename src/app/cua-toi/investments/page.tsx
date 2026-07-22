@@ -26,7 +26,16 @@ export default function UserInvestmentsPage() {
               .eq('user_id', profile.id)
               .order('created_at', { ascending: false })
 
-            if (data && data.length > 0) {
+             if (data && data.length > 0) {
+              // Helper: convert UTC timestamp to Vietnam date string (UTC+7)
+              const toVNDate = (ts: string) => {
+                if (!ts) return ''
+                const d = new Date(ts)
+                // Shift by +7 hours
+                const vnMs = d.getTime() + 7 * 60 * 60 * 1000
+                return new Date(vnMs).toISOString().slice(0, 10)
+              }
+
               setInvestments(data.map(i => ({
                 id: i.id,
                 projectName: i.projects?.name || i.projects?.title || 'Dự án đầu tư Vingroup QPL',
@@ -34,8 +43,8 @@ export default function UserInvestmentsPage() {
                 dailyProfit: Math.floor((i.amount || 0) * (i.projects?.daily_profit_rate || i.interest_rate || 0.8) / 100),
                 dailyRate: i.projects?.daily_profit_rate || i.interest_rate || 0.8,
                 profitEarned: i.profit_earned || 0,
-                startDate: (i.start_time || i.start_date || i.created_at || '').slice(0, 10),
-                endDate: (i.end_time || i.end_date || '').slice(0, 10) || '—',
+                startDate: toVNDate(i.start_time || i.start_date || i.created_at || ''),
+                endDate: toVNDate(i.end_time || i.end_date || '') || '—',
                 status: i.status || 'active',
               })))
             } else {
