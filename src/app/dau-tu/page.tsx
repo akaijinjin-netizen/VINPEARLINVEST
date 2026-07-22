@@ -152,7 +152,7 @@ export default function InvestPage() {
                     <div style={{ fontSize: 18, fontWeight: 800, color: '#C8102E' }}>
                       {project.daily_profit_rate}%
                     </div>
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Lợi nhuận/ngày</div>
+                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Lợi nhuận</div>
                   </div>
                   <div style={{ textAlign: 'center', borderLeft: '1px solid #E5E5E5', borderRight: '1px solid #E5E5E5' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#C8102E' }}>

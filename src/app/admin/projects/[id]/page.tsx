@@ -199,7 +199,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               💰 Thông số đầu tư
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Field label="Lợi nhuận hàng ngày (%)">
+              <Field label="Lợi nhuận (%)">
                 <div style={{ position: 'relative' }}>
                   <input type="number" step="0.1" min="0" max="100" value={form.daily_profit_rate}
                     onFocus={e => e.target.select()}
