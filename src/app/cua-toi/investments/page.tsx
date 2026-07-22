@@ -171,9 +171,9 @@ export default function UserInvestmentsPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748B' }}>Lợi nhuận hàng ngày:</span>
+                  <span style={{ color: '#64748B' }}>Lợi nhuận:</span>
                   <span style={{ fontWeight: 700, color: '#C8102E' }}>
-                    {item.dailyRate}% ({item.dailyProfit.toLocaleString('vi-VN')}đ/ngày)
+                    {item.dailyRate}% ({item.dailyProfit.toLocaleString('vi-VN')}đ)
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>

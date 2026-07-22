@@ -165,7 +165,7 @@ export default function InvestmentOrderPage({ params }: { params: Promise<{ id: 
           width: '100%', marginBottom: 32, textAlign: 'left', border: '1px solid #FECDD3'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
-            <span style={{ color: '#6B7280' }}>Lợi nhuận/ngày dự kiến:</span>
+            <span style={{ color: '#6B7280' }}>Lợi nhuận dự kiến:</span>
             <span style={{ fontWeight: 800, color: '#C8102E' }}>+{formatCurrency(estimatedProfit)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
@@ -216,7 +216,7 @@ export default function InvestmentOrderPage({ params }: { params: Promise<{ id: 
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>{project.name || project.title}</div>
             <div style={{ fontSize: 13, color: '#C8102E', fontWeight: 700, marginTop: 4 }}>
-              Lợi nhuận {dailyProfitRate}% / ngày
+              Lợi nhuận {dailyProfitRate}%
             </div>
           </div>
         </div>

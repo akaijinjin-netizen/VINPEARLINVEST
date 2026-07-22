@@ -15,6 +15,7 @@ export default function HomePage() {
   const [userPhone, setUserPhone] = useState('')
   const [balance, setBalance] = useState(0)
   const [activeInvestmentsCount, setActiveInvestmentsCount] = useState(0)
+  const [todayProfit, setTodayProfit] = useState(0)
 
   useEffect(() => {
     const phone = localStorage.getItem('userPhone') || ''
@@ -61,6 +62,35 @@ export default function HomePage() {
               .eq('status', 'active')
 
             setActiveInvestmentsCount(invCount || 0)
+
+            // 3. Fetch today's profit
+            const startOfDay = new Date()
+            startOfDay.setHours(0, 0, 0, 0)
+            const isoStartOfDay = startOfDay.toISOString()
+
+            // Overnight interest logs
+            const { data: interestLogs } = await supabase
+              .from('overnight_interest_logs')
+              .select('interest_amount')
+              .eq('user_id', profile.id)
+              .gte('created_at', isoStartOfDay)
+
+            const totalInterest = interestLogs?.reduce((sum, log) => sum + (Number(log.interest_amount) || 0), 0) || 0
+
+            // Investment cycle profits ended today
+            const { data: endedInvestments } = await supabase
+              .from('investments')
+              .select('profit_earned, end_time, end_date')
+              .eq('user_id', profile.id)
+              .eq('status', 'ended')
+
+            const todayStr = new Date().toDateString()
+            const totalInvestmentProfit = endedInvestments?.filter(inv => {
+              const dStr = inv.end_time || inv.end_date
+              return dStr && new Date(dStr).toDateString() === todayStr
+            }).reduce((sum, inv) => sum + (Number(inv.profit_earned) || 0), 0) || 0
+
+            setTodayProfit(totalInterest + totalInvestmentProfit)
           }
         }
       } catch (e) {
@@ -161,7 +191,7 @@ export default function HomePage() {
 
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#F59E0B' }}>
-              +0đ
+              +{todayProfit.toLocaleString('vi-VN')}đ
             </div>
             <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Lợi nhuận hôm nay</div>
           </div>
