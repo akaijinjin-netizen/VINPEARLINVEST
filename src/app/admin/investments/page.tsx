@@ -4,17 +4,17 @@ import { useState } from 'react'
 import Pagination from '@/components/Pagination'
 
 const MOCK_INVESTMENTS = [
-  { id: '1', user: '0987654321', userName: 'Nguyễn Văn A', projectName: 'Vinpearl Resort & Spa Hạ Long', amount: 50000000, profitEarned: 1200000, dailyRate: 0.8, status: 'active', startTime: '2026-07-15' },
+  { id: '1', user: '0987654321', userName: 'Nguyễn Văn A', projectName: 'Vingroup QPL Resort & Spa Hạ Long', amount: 50000000, profitEarned: 1200000, dailyRate: 0.8, status: 'active', startTime: '2026-07-15' },
   { id: '2', user: '0912345678', userName: 'Trần Thị B', projectName: 'Grand World Phú Quốc', amount: 200000000, profitEarned: 6000000, dailyRate: 1.0, status: 'active', startTime: '2026-07-12' },
-  { id: '3', user: '0956789012', userName: 'Phạm Thị D', projectName: 'Vinpearl Resort & Golf Nam Hội An', amount: 75000000, profitEarned: 2250000, dailyRate: 0.85, status: 'active', startTime: '2026-07-10' },
-  { id: '4', user: '0967891234', userName: 'Lê Văn C', projectName: 'Vinpearl Resort & Spa Nha Trang Bay', amount: 30000000, profitEarned: 1620000, dailyRate: 0.9, status: 'completed', startTime: '2026-06-15' },
-  { id: '5', user: '0941122334', userName: 'Đỗ Văn F', projectName: 'Vinpearl Discovery Wonderworld', amount: 50000000, profitEarned: 1050000, dailyRate: 0.7, status: 'active', startTime: '2026-07-14' },
+  { id: '3', user: '0956789012', userName: 'Phạm Thị D', projectName: 'Vingroup QPL Resort & Golf Nam Hội An', amount: 75000000, profitEarned: 2250000, dailyRate: 0.85, status: 'active', startTime: '2026-07-10' },
+  { id: '4', user: '0967891234', userName: 'Lê Văn C', projectName: 'Vingroup QPL Resort & Spa Nha Trang Bay', amount: 30000000, profitEarned: 1620000, dailyRate: 0.9, status: 'completed', startTime: '2026-06-15' },
+  { id: '5', user: '0941122334', userName: 'Đỗ Văn F', projectName: 'Vingroup QPL Discovery Wonderworld', amount: 50000000, profitEarned: 1050000, dailyRate: 0.7, status: 'active', startTime: '2026-07-14' },
   { id: '6', user: '0977889900', userName: 'Vũ Thị G', projectName: 'Khu Du Lịch Làng Vân - Đà Nẵng', amount: 100000000, profitEarned: 2850000, dailyRate: 0.95, status: 'active', startTime: '2026-07-11' },
   { id: '7', user: '0981122334', userName: 'Bùi Văn H', projectName: 'VinWonders Vũ Yên - Hải Phòng', amount: 40000000, profitEarned: 960000, dailyRate: 0.8, status: 'active', startTime: '2026-07-13' },
   { id: '8', user: '0919988776', userName: 'Đặng Thị K', projectName: 'Vinhomes Pearl Bay Nha Trang', amount: 150000000, profitEarned: 2925000, dailyRate: 0.65, status: 'active', startTime: '2026-07-09' },
-  { id: '9', user: '0933445566', userName: 'Phan Văn L', projectName: 'Vinpearl Resort & Spa Hội An', amount: 50000000, profitEarned: 1125000, dailyRate: 0.75, status: 'active', startTime: '2026-07-16' },
-  { id: '10', user: '0966778899', userName: 'Trịnh Thị M', projectName: 'Vinpearl Resort & Golf Phú Quốc', amount: 100000000, profitEarned: 2250000, dailyRate: 0.75, status: 'active', startTime: '2026-07-17' },
-  { id: '11', user: '0922334455', userName: 'Dương Văn N', projectName: 'Vinpearl Resort & Spa Hạ Long', amount: 50000000, profitEarned: 1600000, dailyRate: 0.8, status: 'active', startTime: '2026-07-08' },
+  { id: '9', user: '0933445566', userName: 'Phan Văn L', projectName: 'Vingroup QPL Resort & Spa Hội An', amount: 50000000, profitEarned: 1125000, dailyRate: 0.75, status: 'active', startTime: '2026-07-16' },
+  { id: '10', user: '0966778899', userName: 'Trịnh Thị M', projectName: 'Vingroup QPL Resort & Golf Phú Quốc', amount: 100000000, profitEarned: 2250000, dailyRate: 0.75, status: 'active', startTime: '2026-07-17' },
+  { id: '11', user: '0922334455', userName: 'Dương Văn N', projectName: 'Vingroup QPL Resort & Spa Hạ Long', amount: 50000000, profitEarned: 1600000, dailyRate: 0.8, status: 'active', startTime: '2026-07-08' },
   { id: '12', user: '0944556677', userName: 'Lý Thị P', projectName: 'Grand World Phú Quốc', amount: 200000000, profitEarned: 8000000, dailyRate: 1.0, status: 'completed', startTime: '2026-06-01' },
 ]
 

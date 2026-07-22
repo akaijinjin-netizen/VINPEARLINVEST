@@ -48,74 +48,112 @@ const UserIcon = ({ active }: { active: boolean }) => (
 )
 
 const NAV_ITEMS = [
-  { href: '/home', label: 'Trang Chủ', Icon: HomeIcon },
-  { href: '/invest', label: 'Đầu Tư', Icon: ChartIcon },
-  { href: '/about', label: 'Giới Thiệu', Icon: InfoIcon },
-  { href: '/profile', label: 'Của Tôi', Icon: UserIcon },
+  { href: '/trang-chu', label: 'Trang Chủ', Icon: HomeIcon },
+  { href: '/dau-tu', label: 'Đầu Tư', Icon: ChartIcon },
+  { href: '/linh-vuc-hoat-dong', label: 'Lĩnh Vực', Icon: InfoIcon },
+  { href: '/cua-toi', label: 'Của Tôi', Icon: UserIcon },
 ]
 
 export default function BottomNav() {
   const pathname = usePathname()
 
+  if (pathname === '/cskh' || pathname.startsWith('/admin')) {
+    return null
+  }
+
   return (
-    <nav style={{
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes pulseChat {
+          0% { box-shadow: 0 0 0 0 rgba(0, 104, 255, 0.4); }
+          70% { box-shadow: 0 0 0 12px rgba(0, 104, 255, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(0, 104, 255, 0); }
+        }
+      ` }} />
+
+      {/* Floating Chat Bubble */}
+      <Link
+        href="/cskh"
+        style={{
+          position: 'fixed',
+          bottom: 80,
+          right: 'max(16px, calc(50% - 215px + 16px))',
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #0068ff 0%, #0053cc 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 6px 20px rgba(0, 104, 255, 0.4)',
+          zIndex: 9998,
+          cursor: 'pointer',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          animation: 'pulseChat 2s infinite'
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 900, color: 'white', letterSpacing: '0.2px' }}>CSKH</span>
+        {/* Pulsing online dot */}
+        <span style={{
+          position: 'absolute',
+          top: 2,
+          right: 2,
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          background: '#22C55E',
+          border: '2px solid white'
+        }} />
+      </Link>
+
+      <nav style={{
       position: 'fixed',
       bottom: 0,
       left: '50%',
       transform: 'translateX(-50%)',
       width: '100%',
       maxWidth: 430,
-      background: 'white',
-      borderTop: '1px solid #F0F0F0',
+      height: 64,
+      background: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(10px)',
       display: 'flex',
-      zIndex: 100,
-      boxShadow: '0 -2px 16px rgba(0,0,0,0.06)',
-      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      borderTop: '1px solid #E2E8F0',
+      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.04)',
+      zIndex: 9999,
+      paddingBottom: 'safe',
     }}>
-      {NAV_ITEMS.map(({ href, label, Icon }) => {
-        const active = pathname === href || pathname.startsWith(href + '/')
+      {NAV_ITEMS.map((item) => {
+        const isActive = pathname === item.href || (item.href !== '/trang-chu' && pathname.startsWith(item.href))
         return (
           <Link
-            key={href}
-            href={href}
+            key={item.href}
+            href={item.href}
             style={{
-              flex: 1,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '10px 4px 12px',
               textDecoration: 'none',
               gap: 4,
-              position: 'relative',
+              flex: 1,
+              height: '100%',
             }}
           >
-            {/* Active indicator */}
-            {active && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 32,
-                height: 3,
-                background: '#C8102E',
-                borderRadius: '0 0 4px 4px',
-              }} />
-            )}
-            <Icon active={active} />
+            <item.Icon active={isActive} />
             <span style={{
               fontSize: 10,
-              fontWeight: active ? 700 : 500,
-              color: active ? '#C8102E' : '#9CA3AF',
-              letterSpacing: 0.2,
-              fontFamily: 'inherit',
+              fontWeight: isActive ? 800 : 500,
+              color: isActive ? '#C8102E' : '#9CA3AF',
+              transition: 'color 0.15s ease',
             }}>
-              {label}
+              {item.label}
             </span>
           </Link>
         )
       })}
     </nav>
+    </>
   )
 }

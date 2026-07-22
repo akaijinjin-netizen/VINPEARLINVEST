@@ -1,30 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DepositPage() {
   const [amount, setAmount] = useState('')
   const [bill, setBill] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [userPhone, setUserPhone] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
   const bankInfo = {
     bank: 'ACB',
-    accountName: 'CONG TY TNHH QLQ DAU TU VINPEARL',
-    accountNumber: '41561027',
-    transferContent: 'NAPTIEN 278'
+    accountName: 'CONG TY TNHH QLQ DAU TU VINGROUP QPL',
+    accountNumber: '41561027'
   }
 
   const quickAmounts = [10_000_000, 20_000_000, 50_000_000, 100_000_000]
 
+  useEffect(() => {
+    const phone = localStorage.getItem('userPhone') || ''
+    setUserPhone(phone)
+  }, [])
+
+  const transferContent = userPhone ? `NAP ${userPhone}` : 'NAPTIEN'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    setErrorMsg('')
+
+    try {
+      const supabase = createClient()
+      
+      // 1. Get profile ID
+      const { data: profile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', userPhone)
+        .single()
+
+      if (profileErr || !profile) {
+        throw new Error('Không tìm thấy tài khoản người dùng!')
+      }
+
+      // Convert bill image to base64 if selected
+      let billBase64 = ''
+      if (bill) {
+        billBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = error => reject(error)
+          reader.readAsDataURL(bill)
+        })
+      }
+
+      // 2. Insert deposit request
+      const { error: insertErr } = await supabase
+        .from('deposits')
+        .insert({
+          user_id: profile.id,
+          amount: parseFloat(amount),
+          bank_name: bankInfo.bank,
+          transfer_content: transferContent,
+          status: 'pending',
+          bill_image: billBase64 || null
+        })
+
+      if (insertErr) throw insertErr
+
       setSuccess(true)
-    }, 1500)
+    } catch (err: any) {
+      console.error(err)
+      setErrorMsg(err.message || 'Lỗi gửi yêu cầu nạp tiền!')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (success) {
@@ -39,9 +92,9 @@ export default function DepositPage() {
           Yêu cầu đã được gửi!
         </div>
         <div style={{ fontSize: 15, color: '#6B7280', marginBottom: 32, lineHeight: 1.6 }}>
-          Chúng tôi sẽ xác nhận và cộng tiền vào tài khoản của bạn trong vòng 15 phút.
+          Chúng tôi sẽ xác nhận và cộng tiền vào tài khoản của bạn sau khi đối chiếu giao dịch thành công.
         </div>
-        <Link href="/profile" style={{ textDecoration: 'none', width: '100%' }}>
+        <Link href="/cua-toi" style={{ textDecoration: 'none', width: '100%' }}>
           <button style={{
             width: '100%',
             background: 'linear-gradient(135deg, #C8102E 0%, #A00D25 100%)',
@@ -65,7 +118,7 @@ export default function DepositPage() {
         display: 'flex', alignItems: 'center', gap: 14,
         borderBottom: '1px solid #F0F0F0'
       }}>
-        <Link href="/profile" style={{
+        <Link href="/cua-toi" style={{
           textDecoration: 'none', color: '#1A1A1A',
           fontSize: 20, width: 36, height: 36,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -107,6 +160,13 @@ export default function DepositPage() {
           ))}
         </div>
 
+        {/* Error alert */}
+        {errorMsg && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+            {errorMsg}
+          </div>
+        )}
+
         {/* Form Card */}
         <form onSubmit={handleSubmit}>
           <div style={{
@@ -126,7 +186,7 @@ export default function DepositPage() {
                 placeholder="Nhập số tiền"
                 required
                 min={1000000}
-                className="input-field"
+                style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 15, boxSizing: 'border-box', outline: 'none' }}
               />
               {/* Quick amount buttons */}
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -158,11 +218,11 @@ export default function DepositPage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between'
               }}>
                 <span style={{ fontSize: 16, fontWeight: 800, color: '#C8102E', letterSpacing: 1 }}>
-                  {bankInfo.transferContent}
+                  {transferContent}
                 </span>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard?.writeText(bankInfo.transferContent)}
+                  onClick={() => navigator.clipboard?.writeText(transferContent)}
                   style={{
                     background: '#C8102E', color: 'white',
                     border: 'none', borderRadius: 8,
@@ -209,7 +269,7 @@ export default function DepositPage() {
             border: '1px solid #FDE68A'
           }}>
             <div style={{ fontSize: 13, color: '#92400E', lineHeight: 1.5 }}>
-              ⚠️ Vui lòng chuyển khoản đúng nội dung <strong>{bankInfo.transferContent}</strong> để hệ thống tự động xác nhận. Sai nội dung sẽ gây chậm trễ xử lý.
+              ⚠️ Vui lòng chuyển khoản đúng nội dung <strong>{transferContent}</strong> để hệ thống dễ dàng xác nhận. Sai nội dung sẽ gây chậm trễ xử lý.
             </div>
           </div>
 
@@ -229,24 +289,10 @@ export default function DepositPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
             }}
           >
-            {loading ? (
-              <>
-                <span style={{
-                  width: 18, height: 18, border: '2px solid white',
-                  borderTopColor: 'transparent', borderRadius: '50%',
-                  display: 'inline-block',
-                  animation: 'spin 0.8s linear infinite'
-                }} />
-                Đang xử lý...
-              </>
-            ) : 'Xác nhận nạp tiền'}
+            {loading ? 'Đang xử lý...' : 'Xác nhận nạp tiền'}
           </button>
         </form>
       </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   )
 }

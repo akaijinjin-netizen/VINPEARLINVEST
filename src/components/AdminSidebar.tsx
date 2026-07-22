@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
   {
@@ -25,7 +27,6 @@ const NAV_ITEMS = [
       {
         href: '/admin/deposits',
         label: 'Duyệt nạp tiền',
-        badge: 7,
         badgeColor: '#10B981',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -37,7 +38,6 @@ const NAV_ITEMS = [
       {
         href: '/admin/withdrawals',
         label: 'Duyệt rút tiền',
-        badge: 5,
         badgeColor: '#F59E0B',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -58,7 +58,7 @@ const NAV_ITEMS = [
       },
       {
         href: '/admin/cskh',
-        label: 'Kênh CSKH (Telegram/Zalo)',
+        label: '🎧 Tổng đài CSKH Trực tuyến',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -135,6 +135,43 @@ const NAV_ITEMS = [
 
 export default function AdminSidebar() {
   const pathname = usePathname()
+  const [pendingDeposits, setPendingDeposits] = useState(0)
+  const [pendingWithdrawals, setPendingWithdrawals] = useState(0)
+
+  useEffect(() => {
+    async function fetchPendingCounts() {
+      try {
+        const supabase = createClient()
+        
+        // Count pending deposits
+        const { count: depCount, error: depErr } = await supabase
+          .from('deposits')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+
+        if (!depErr && depCount !== null) {
+          setPendingDeposits(depCount)
+        }
+
+        // Count pending withdrawals
+        const { count: withCount, error: withErr } = await supabase
+          .from('withdrawals')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+
+        if (!withErr && withCount !== null) {
+          setPendingWithdrawals(withCount)
+        }
+      } catch (e) {
+        console.log('Error loading sidebar counts:', e)
+      }
+    }
+
+    fetchPendingCounts()
+    // Poll counts every 10 seconds to keep sidebar numbers active
+    const interval = setInterval(fetchPendingCounts, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <aside style={{
@@ -168,7 +205,7 @@ export default function AdminSidebar() {
         </div>
         <div>
           <div style={{ color: 'white', fontWeight: 800, fontSize: 16, letterSpacing: '-0.3px' }}>
-            VINPEARL
+            VINGROUP QPL
           </div>
           <div style={{ color: '#C8102E', fontSize: 11, fontWeight: 700, letterSpacing: '1px' }}>
             ADMIN PANEL
@@ -189,6 +226,15 @@ export default function AdminSidebar() {
 
             {group.items.map((item) => {
               const isActive = pathname === item.href
+              
+              // Determine dynamic badge count
+              let badgeVal = 0
+              if (item.href === '/admin/deposits') {
+                badgeVal = pendingDeposits
+              } else if (item.href === '/admin/withdrawals') {
+                badgeVal = pendingWithdrawals
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -215,7 +261,7 @@ export default function AdminSidebar() {
                     <span>{item.label}</span>
                   </div>
 
-                  {item.badge !== undefined && (
+                  {badgeVal > 0 && (
                     <span style={{
                       background: item.badgeColor || '#C8102E',
                       color: 'white',
@@ -224,7 +270,7 @@ export default function AdminSidebar() {
                       padding: '2px 8px',
                       borderRadius: 10,
                     }}>
-                      {item.badge}
+                      {badgeVal}
                     </span>
                   )}
                 </Link>

@@ -1,163 +1,375 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+type ChatMessage = {
+  id: string
+  sender_phone: string
+  sender_type: 'user' | 'admin'
+  message: string
+  image_url?: string
+  created_at: string
+}
+
+type Conversation = {
+  phone: string
+  lastMessage: string
+  lastTime: string
+  unreadCount: number
+}
 
 export default function AdminCskhPage() {
-  const [activeChannel, setActiveChannel] = useState<'telegram' | 'zalo' | 'both'>('telegram')
-  const [telegramUrl, setTelegramUrl] = useState('https://t.me/vinpearl_cskh')
-  const [zaloUrl, setZaloUrl] = useState('https://zalo.me/0987654321')
-  const [cskhSaved, setCskhSaved] = useState(false)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [activePhone, setActivePhone] = useState<string>('')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [inputText, setInputText] = useState('')
+  const [loading, setLoading] = useState(true)
 
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // 1. Fetch conversations and load initial list
   useEffect(() => {
-    const savedTg = localStorage.getItem('telegramUrl')
-    const savedZalo = localStorage.getItem('zaloUrl')
-    const savedChannel = localStorage.getItem('cskhActiveChannel')
-    if (savedTg) setTelegramUrl(savedTg)
-    if (savedZalo) setZaloUrl(savedZalo)
-    if (savedChannel) setActiveChannel(savedChannel as any)
-  }, [])
+    const supabase = createClient()
 
-  const handleSaveCskh = (e: React.FormEvent) => {
+    async function loadAllMessages() {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        // Group by sender_phone
+        const convoMap: { [key: string]: { msg: string; time: string } } = {}
+        data.forEach((msg: ChatMessage) => {
+          if (!convoMap[msg.sender_phone]) {
+            convoMap[msg.sender_phone] = {
+              msg: msg.image_url ? '📷 [Hình ảnh]' : msg.message,
+              time: msg.created_at
+            }
+          }
+        })
+
+        const convoList = Object.keys(convoMap).map((phone) => ({
+          phone,
+          lastMessage: convoMap[phone].msg,
+          lastTime: convoMap[phone].time,
+          unreadCount: 0 // Simplification
+        }))
+
+        // Sort by lastTime desc
+        convoList.sort((a, b) => new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime())
+        setConversations(convoList)
+      }
+      setLoading(false)
+    }
+
+    loadAllMessages()
+
+    // Subscribe to all incoming messages
+    const channel = supabase
+      .channel('admin_global_chat')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const newMsg = payload.new as ChatMessage
+          
+          // Update conversation list
+          setConversations((prev) => {
+            const filtered = prev.filter((c) => c.phone !== newMsg.sender_phone)
+            const updatedConvo: Conversation = {
+              phone: newMsg.sender_phone,
+              lastMessage: newMsg.image_url ? '📷 [Hình ảnh]' : newMsg.message,
+              lastTime: newMsg.created_at,
+              unreadCount: 0
+            }
+            return [updatedConvo, ...filtered]
+          })
+
+          // Append to active message screen if matches
+          if (activePhone && newMsg.sender_phone === activePhone) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMsg.id)) return prev
+              return [...prev, newMsg]
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activePhone])
+
+  // 2. Fetch history for the active conversation
+  useEffect(() => {
+    if (!activePhone) {
+      setMessages([])
+      return
+    }
+
+    const supabase = createClient()
+
+    async function loadActiveChatHistory() {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('sender_phone', activePhone)
+        .order('created_at', { ascending: true })
+
+      if (!error && data) {
+        setMessages(data)
+      }
+    }
+
+    loadActiveChatHistory()
+  }, [activePhone])
+
+  // 3. Scroll to bottom when active conversation messages load or update
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // 4. Send admin response
+  const handleSendResponse = async (e: React.FormEvent) => {
     e.preventDefault()
-    localStorage.setItem('telegramUrl', telegramUrl)
-    localStorage.setItem('zaloUrl', zaloUrl)
-    localStorage.setItem('cskhActiveChannel', activeChannel)
-    setCskhSaved(true)
-    setTimeout(() => setCskhSaved(false), 3000)
+    if (!inputText.trim() || !activePhone) return
+
+    const messageContent = inputText.trim()
+    setInputText('')
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('chat_messages')
+      .insert({
+        sender_phone: activePhone,
+        sender_type: 'admin',
+        message: messageContent
+      })
+
+    if (error) {
+      console.error('Error sending admin response:', error)
+    }
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0F172A' }}>Quản lý Kênh CSKH (Telegram & Zalo)</h1>
-        <p style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>Cấu hình linh hoạt kênh hỗ trợ chăm sóc khách hàng trực tuyến ngoài App</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '80vh', width: '100%' }}>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A' }}>🎧 Tổng đài CSKH Trực tuyến</h1>
+        <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>
+          Nhận và trả lời tin nhắn hỗ trợ từ khách hàng theo thời gian thực (Real-time).
+        </p>
       </div>
 
-      {cskhSaved && (
-        <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#059669', padding: '14px 20px', borderRadius: 12, marginBottom: 20, fontSize: 14, fontWeight: 700 }}>
-          ✓ Đã lưu cài đặt Kênh CSKH thành công! Các thay đổi đã được áp dụng ngoài App.
-        </div>
-      )}
-
-      {/* CSKH Channel Settings Form */}
-      <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E5E7EB', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>🎧</span> Cấu hình Kênh Chăm Sóc Khách Hàng Nổi Bật
-        </h3>
-        <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 24 }}>
-          Khi khách hàng ấn vào nút <strong>"Quên mật khẩu?"</strong> hoặc <strong>"Hỗ trợ CSKH"</strong> ngoài App, ứng dụng sẽ mở kênh anh cấu hình dưới đây.
-        </p>
-
-        <form onSubmit={handleSaveCskh}>
-          {/* Active Channel Selector */}
-          <div style={{ marginBottom: 24, background: '#F8FAFC', padding: '20px', borderRadius: 14, border: '1px solid #E2E8F0' }}>
-            <label style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', display: 'block', marginBottom: 14 }}>
-              📌 Kênh CSKH hiển thị khi khách hàng gửi yêu cầu hỗ trợ:
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-              <label style={{
-                background: activeChannel === 'telegram' ? '#EFF6FF' : 'white',
-                border: `2px solid ${activeChannel === 'telegram' ? '#2563EB' : '#E2E8F0'}`,
-                borderRadius: 12, padding: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10
-              }}>
-                <input
-                  type="radio"
-                  name="activeChannel"
-                  value="telegram"
-                  checked={activeChannel === 'telegram'}
-                  onChange={() => setActiveChannel('telegram')}
-                />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#2563EB' }}>✈️ Chỉ Telegram</div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Khách ấn sẽ mở ngay Telegram</div>
-                </div>
-              </label>
-
-              <label style={{
-                background: activeChannel === 'zalo' ? '#EFF6FF' : 'white',
-                border: `2px solid ${activeChannel === 'zalo' ? '#2563EB' : '#E2E8F0'}`,
-                borderRadius: 12, padding: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10
-              }}>
-                <input
-                  type="radio"
-                  name="activeChannel"
-                  value="zalo"
-                  checked={activeChannel === 'zalo'}
-                  onChange={() => setActiveChannel('zalo')}
-                />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0284C7' }}>💬 Chỉ Zalo CSKH</div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Khách ấn sẽ mở ngay Zalo Chat</div>
-                </div>
-              </label>
-
-              <label style={{
-                background: activeChannel === 'both' ? '#F8FAFC' : 'white',
-                border: `2px solid ${activeChannel === 'both' ? '#0F172A' : '#E2E8F0'}`,
-                borderRadius: 12, padding: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10
-              }}>
-                <input
-                  type="radio"
-                  name="activeChannel"
-                  value="both"
-                  checked={activeChannel === 'both'}
-                  onChange={() => setActiveChannel('both')}
-                />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>🌐 Cả 2 kênh</div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Hiện cả 2 nút Telegram & Zalo</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 8 }}>
-                ✈️ Đường Link Telegram CSKH *
-              </label>
-              <input
-                type="url"
-                value={telegramUrl}
-                onChange={e => setTelegramUrl(e.target.value)}
-                placeholder="https://t.me/vinpearl_cskh"
-                required
-                style={{
-                  width: '100%', padding: '12px 14px', border: '1.5px solid #E5E7EB',
-                  borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-              <span style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4, display: 'block' }}>Ví dụ: https://t.me/ten_taikhoan_cskh</span>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 8 }}>
-                💬 Đường Link Zalo CSKH *
-              </label>
-              <input
-                type="url"
-                value={zaloUrl}
-                onChange={e => setZaloUrl(e.target.value)}
-                placeholder="https://zalo.me/0987654321"
-                required
-                style={{
-                  width: '100%', padding: '12px 14px', border: '1.5px solid #E5E7EB',
-                  borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-              <span style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4, display: 'block' }}>Ví dụ: https://zalo.me/0987654321</span>
-            </div>
-          </div>
-
-          <button type="submit" style={{
-            background: 'linear-gradient(135deg, #C8102E, #A00D25)',
-            color: 'white', border: 'none', borderRadius: 12,
-            padding: '14px 28px', fontSize: 15, fontWeight: 700,
-            cursor: 'pointer', boxShadow: '0 4px 14px rgba(200,16,46,0.3)'
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        background: 'white',
+        border: '1px solid #E2E8F0',
+        borderRadius: 16,
+        overflow: 'hidden',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+      }}>
+        {/* Left Sidebar: Conversations List */}
+        <div style={{
+          width: '320px',
+          borderRight: '1px solid #E2E8F0',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#F8FAFC'
+        }}>
+          <div style={{
+            padding: '16px',
+            borderBottom: '1px solid #E2E8F0',
+            fontWeight: 800,
+            fontSize: 14,
+            color: '#0F172A'
           }}>
-            💾 Lưu Cấu Hình CSKH
-          </button>
-        </form>
+            Danh sách cuộc hội thoại ({conversations.length})
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {loading ? (
+              <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                ⏳ Đang tải cuộc hội thoại...
+              </div>
+            ) : conversations.length === 0 ? (
+              <div style={{ padding: 24, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                📭 Chưa có cuộc hội thoại nào.
+              </div>
+            ) : (
+              conversations.map((convo) => (
+                <div
+                  key={convo.phone}
+                  onClick={() => setActivePhone(convo.phone)}
+                  style={{
+                    padding: '14px 16px',
+                    borderBottom: '1px solid #F1F5F9',
+                    cursor: 'pointer',
+                    background: activePhone === convo.phone ? '#EFF6FF' : 'transparent',
+                    borderLeft: `3px solid ${activePhone === convo.phone ? '#2563EB' : 'transparent'}`,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>📱 {convo.phone}</span>
+                    <span style={{ fontSize: 10, color: '#94A3B8' }}>
+                      {new Date(convo.lastTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div style={{
+                    fontSize: 12,
+                    color: '#64748B',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {convo.lastMessage}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Right Area: Messages Screen */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
+          {activePhone ? (
+            <>
+              {/* Chat Window Header */}
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                background: '#FFFFFF'
+              }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>Hội thoại: {activePhone}</div>
+                  <div style={{ fontSize: 11, color: '#22C55E', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }}></span>
+                    Khách hàng đang kết nối
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages Container */}
+              <div style={{
+                flex: 1,
+                padding: '20px',
+                overflowY: 'auto',
+                background: '#F8FAFC',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14
+              }}>
+                {messages.map((msg) => {
+                  const isUser = msg.sender_type === 'user'
+                  return (
+                    <div
+                      key={msg.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: isUser ? 'row' : 'row-reverse',
+                        alignItems: 'flex-end',
+                        gap: 8,
+                        alignSelf: isUser ? 'flex-start' : 'flex-end',
+                        maxWidth: '75%'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-start' : 'flex-end' }}>
+                        <div style={{
+                          background: isUser ? '#E0F2FE' : '#F1F5F9',
+                          color: '#0F172A',
+                          padding: '10px 14px',
+                          borderRadius: isUser ? '14px 14px 14px 2px' : '14px 14px 2px 14px',
+                          fontSize: 13,
+                          lineHeight: 1.5,
+                          wordBreak: 'break-word'
+                        }}>
+                          {msg.image_url ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <img
+                                src={msg.image_url}
+                                alt="Ảnh đính kèm"
+                                style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
+                              />
+                              {msg.message !== '📷 Gửi một ảnh đính kèm' && <div>{msg.message}</div>}
+                            </div>
+                          ) : (
+                            msg.message
+                          )}
+                        </div>
+                        <span style={{ fontSize: 9, color: '#94A3B8', marginTop: 4, padding: '0 4px' }}>
+                          {new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Reply Form */}
+              <form
+                onSubmit={handleSendResponse}
+                style={{
+                  padding: '16px',
+                  background: 'white',
+                  borderTop: '1px solid #E2E8F0',
+                  display: 'flex',
+                  gap: 12
+                }}
+              >
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={`Phản hồi số điện thoại ${activePhone}...`}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    outline: 'none',
+                    background: '#F8FAFC'
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    background: '#2563EB',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Gửi phản hồi
+                </button>
+              </form>
+            </>
+          ) : (
+            <div style={{
+              margin: 'auto',
+              textAlign: 'center',
+              color: '#94A3B8',
+              padding: '24px'
+            }}>
+              <div style={{ fontSize: 50, marginBottom: 12 }}>🎧</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#64748B' }}>Chưa chọn cuộc trò chuyện</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                Chọn một số điện thoại từ danh sách bên trái để bắt đầu chát hỗ trợ khách hàng.
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

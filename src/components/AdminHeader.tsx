@@ -109,7 +109,7 @@ export default function AdminHeader() {
           boxShadow: '0 0 0 3px rgba(16,185,129,0.2)',
         }} />
         <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
-          Hệ thống Vinpearl Invest đang hoạt động
+          Hệ thống Vingroup QPL đang hoạt động
         </span>
       </div>
 

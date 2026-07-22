@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export default function WithdrawPage() {
   const [amount, setAmount] = useState('')
@@ -10,16 +11,101 @@ export default function WithdrawPage() {
   const [accountNumber, setAccountNumber] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [userBalance, setUserBalance] = useState(0)
+  const [profileId, setProfileId] = useState('')
+  const [userPhone, setUserPhone] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
-  const userBalance = 0 // Mock user balance
+  useEffect(() => {
+    const phone = localStorage.getItem('userPhone') || ''
+    setUserPhone(phone)
 
-  const handleSubmit = (e: React.FormEvent) => {
+    async function loadUserWallet() {
+      try {
+        const supabase = createClient()
+        if (phone) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*, wallets(*)')
+            .eq('phone', phone)
+            .single()
+
+          if (profile) {
+            setProfileId(profile.id)
+            setBankName(profile.bank_name || '')
+            setAccountName(profile.bank_account_name || '')
+            setAccountNumber(profile.bank_account_number || '')
+            if (profile.wallets) {
+              setUserBalance(profile.wallets.balance || 0)
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Error loading user wallet:', e)
+      }
+    }
+    loadUserWallet()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
+    setErrorMsg('')
+
+    const withdrawVal = parseFloat(amount)
+
+    if (withdrawVal > userBalance) {
+      setErrorMsg('⚠️ Số dư khả dụng trong ví không đủ để thực hiện lệnh rút tiền này!')
       setLoading(false)
+      return
+    }
+
+    if (withdrawVal < 100000) {
+      setErrorMsg('⚠️ Số tiền rút tối thiểu là 100,000 VND!')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      
+      // 1. Deduct balance from wallet
+      const newBalance = userBalance - withdrawVal
+      const { error: walletErr } = await supabase
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', profileId)
+
+      if (walletErr) throw walletErr
+
+      // 2. Insert withdrawal request
+      const { error: withdrawErr } = await supabase
+        .from('withdrawals')
+        .insert({
+          user_id: profileId,
+          amount: withdrawVal,
+          bank_name: bankName,
+          bank_account_name: accountName,
+          bank_account_number: accountNumber,
+          status: 'pending'
+        })
+
+      if (withdrawErr) {
+        // Rollback balance if insert failed
+        await supabase
+          .from('wallets')
+          .update({ balance: userBalance })
+          .eq('user_id', profileId)
+        throw withdrawErr
+      }
+
       setSuccess(true)
-    }, 1500)
+    } catch (err: any) {
+      console.error(err)
+      setErrorMsg(err.message || 'Lỗi gửi yêu cầu rút tiền!')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (success) {
@@ -34,9 +120,9 @@ export default function WithdrawPage() {
           Yêu cầu rút tiền thành công!
         </div>
         <div style={{ fontSize: 15, color: '#6B7280', marginBottom: 32, lineHeight: 1.6 }}>
-          Lệnh rút tiền của bạn đang được duyệt. Tiền sẽ được chuyển về tài khoản trong vòng 1-2 giờ làm việc.
+          Lệnh rút tiền của bạn đang chờ quản trị viên phê duyệt. Tiền sẽ được chuyển về tài khoản ngân hàng của bạn ngay khi được duyệt.
         </div>
-        <Link href="/profile" style={{ textDecoration: 'none', width: '100%' }}>
+        <Link href="/cua-toi" style={{ textDecoration: 'none', width: '100%' }}>
           <button style={{
             width: '100%',
             background: 'linear-gradient(135deg, #C8102E 0%, #A00D25 100%)',
@@ -60,7 +146,7 @@ export default function WithdrawPage() {
         display: 'flex', alignItems: 'center', gap: 14,
         borderBottom: '1px solid #F0F0F0'
       }}>
-        <Link href="/profile" style={{
+        <Link href="/cua-toi" style={{
           textDecoration: 'none', color: '#1A1A1A',
           fontSize: 20, width: 36, height: 36,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -81,6 +167,13 @@ export default function WithdrawPage() {
           </div>
         </div>
 
+        {/* Error Alert */}
+        {errorMsg && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+            {errorMsg}
+          </div>
+        )}
+
         {/* Withdraw Form */}
         <form onSubmit={handleSubmit}>
           <div style={{
@@ -100,7 +193,7 @@ export default function WithdrawPage() {
                 placeholder="Nhập số tiền muốn rút"
                 required
                 min={100000}
-                className="input-field"
+                style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 15, boxSizing: 'border-box', outline: 'none' }}
               />
             </div>
 
@@ -113,8 +206,7 @@ export default function WithdrawPage() {
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 required
-                className="input-field"
-                style={{ background: 'white' }}
+                style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 15, boxSizing: 'border-box', outline: 'none', background: 'white' }}
               >
                 <option value="">-- Chọn ngân hàng --</option>
                 {['Vietcombank', 'ACB', 'Techcombank', 'BIDV', 'VPBank', 'MB Bank', 'Sacombank', 'Agribank', 'TPBank', 'VietinBank'].map(b => (
@@ -134,7 +226,7 @@ export default function WithdrawPage() {
                 onChange={e => setAccountName(e.target.value.toUpperCase())}
                 placeholder="VD: NGUYEN VAN A"
                 required
-                className="input-field"
+                style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 15, boxSizing: 'border-box', outline: 'none' }}
               />
             </div>
 
@@ -149,8 +241,7 @@ export default function WithdrawPage() {
                 onChange={e => setAccountNumber(e.target.value)}
                 placeholder="Nhập số tài khoản"
                 required
-                className="input-field"
-                style={{ fontFamily: 'monospace' }}
+                style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 15, boxSizing: 'border-box', outline: 'none', fontFamily: 'monospace' }}
               />
             </div>
           </div>

@@ -1,24 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Pagination from '@/components/Pagination'
+import { createClient } from '@/lib/supabase/client'
 
 type Status = 'pending' | 'approved' | 'rejected'
 
-const MOCK_WITHDRAWALS = [
-  { id: '1', name: 'Phạm Văn D', user: '0978123456', amount: 30_000_000, bank: 'Vietcombank', accountName: 'PHAM VAN D', accountNo: '1234567890', time: '2026-07-21 14:08', status: 'pending' as Status },
-  { id: '2', name: 'Hoàng Thị E', user: '0945678901', amount: 75_000_000, bank: 'ACB', accountName: 'HOANG THI E', accountNo: '9876543210', time: '2026-07-21 13:55', status: 'pending' as Status },
-  { id: '3', name: 'Nguyễn Văn F', user: '0923456789', amount: 50_000_000, bank: 'Techcombank', accountName: 'NGUYEN VAN F', accountNo: '5555666677', time: '2026-07-21 12:30', status: 'approved' as Status },
-  { id: '4', name: 'Trần Thị G', user: '0934561234', amount: 20_000_000, bank: 'BIDV', accountName: 'TRAN THI G', accountNo: '1111222233', time: '2026-07-21 11:00', status: 'rejected' as Status },
-  { id: '5', name: 'Vũ Văn H', user: '0966554433', amount: 45_000_000, bank: 'MB Bank', accountName: 'VU VAN H', accountNo: '8888999900', time: '2026-07-21 10:20', status: 'pending' as Status },
-  { id: '6', name: 'Bùi Thị K', user: '0911223344', amount: 90_000_000, bank: 'Vietcombank', accountName: 'BUI THI K', accountNo: '4444555566', time: '2026-07-21 09:40', status: 'approved' as Status },
-  { id: '7', name: 'Đặng Văn L', user: '0977881122', amount: 15_000_000, bank: 'ACB', accountName: 'DANG VAN L', accountNo: '7777888899', time: '2026-07-21 09:10', status: 'pending' as Status },
-  { id: '8', name: 'Phan Thị M', user: '0933221100', amount: 65_000_000, bank: 'Techcombank', accountName: 'PHAN THI M', accountNo: '2222333344', time: '2026-07-21 08:30', status: 'pending' as Status },
-  { id: '9', name: 'Lê Văn N', user: '0988776655', amount: 110_000_000, bank: 'BIDV', accountName: 'LE VAN N', accountNo: '9999000011', time: '2026-07-20 23:15', status: 'approved' as Status },
-  { id: '10', name: 'Trịnh Thị P', user: '0922114433', amount: 40_000_000, bank: 'VPBank', accountName: 'TRINH THI P', accountNo: '3333444455', time: '2026-07-20 22:00', status: 'pending' as Status },
-  { id: '11', name: 'Đỗ Văn Q', user: '0944332211', amount: 85_000_000, bank: 'ACB', accountName: 'DO VAN Q', accountNo: '6666777788', time: '2026-07-20 20:45', status: 'approved' as Status },
-  { id: '12', name: 'Vũ Thị R', user: '0955667788', amount: 25_000_000, bank: 'Vietcombank', accountName: 'VU THI R', accountNo: '1122334455', time: '2026-07-20 19:30', status: 'rejected' as Status },
-]
+type Withdrawal = {
+  id: string
+  user_id: string
+  name: string
+  user: string // phone
+  amount: number
+  bank: string
+  accountName: string
+  accountNo: string
+  time: string
+  status: Status
+}
 
 const STATUS_MAP: Record<Status, { label: string; color: string; bg: string; border: string }> = {
   pending:  { label: 'Chờ duyệt', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
@@ -29,13 +28,119 @@ const STATUS_MAP: Record<Status, { label: string; color: string; bg: string; bor
 const ITEMS_PER_PAGE = 10
 
 export default function AdminWithdrawalsPage() {
-  const [items, setItems] = useState(MOCK_WITHDRAWALS)
+  const [items, setItems] = useState<Withdrawal[]>([])
   const [filter, setFilter] = useState<'all' | Status>('pending')
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const approve = (id: string) => setItems(p => p.map(i => i.id === id ? { ...i, status: 'approved' as Status } : i))
-  const reject  = (id: string) => setItems(p => p.map(i => i.id === id ? { ...i, status: 'rejected' as Status } : i))
+  async function fetchWithdrawalsFromSupabase() {
+    try {
+      const supabase = createClient()
+      const { data: withData, error } = await supabase
+        .from('withdrawals')
+        .select('*, profiles(phone, full_name)')
+        .order('created_at', { ascending: false })
+
+      if (!error && withData) {
+        const mapped: Withdrawal[] = withData.map(w => ({
+          id: w.id,
+          user_id: w.user_id,
+          name: w.profiles?.full_name || 'Khách hàng',
+          user: w.profiles?.phone || 'N/A',
+          amount: w.amount || 0,
+          bank: w.bank_name || 'Vietcombank',
+          accountName: w.bank_account_name || '',
+          accountNo: w.bank_account_number || '',
+          time: w.created_at ? w.created_at.replace('T', ' ').slice(0, 16) : 'Vừa xong',
+          status: w.status as Status
+        }))
+        setItems(mapped)
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    fetchWithdrawalsFromSupabase()
+  }, [])
+
+  const approve = async (id: string) => {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+
+    try {
+      const supabase = createClient()
+      
+      // 1. Update status to approved
+      const { error: withErr } = await supabase
+        .from('withdrawals')
+        .update({ status: 'approved' })
+        .eq('id', id)
+
+      if (withErr) throw withErr
+
+      // 2. Fetch current wallet
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('total_withdrawn')
+        .eq('user_id', item.user_id)
+        .single()
+
+      if (wallet) {
+        const newTotalWithdrawn = (wallet.total_withdrawn || 0) + item.amount
+        
+        // 3. Update total withdrawn
+        await supabase
+          .from('wallets')
+          .update({ total_withdrawn: newTotalWithdrawn })
+          .eq('user_id', item.user_id)
+      }
+
+      setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'approved' as Status } : i))
+    } catch (e: any) {
+      alert('Lỗi duyệt rút tiền: ' + e.message)
+    }
+  }
+
+  const reject = async (id: string) => {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+
+    try {
+      const supabase = createClient()
+      
+      // 1. Update status to rejected
+      const { error: withErr } = await supabase
+        .from('withdrawals')
+        .update({ status: 'rejected' })
+        .eq('id', id)
+
+      if (withErr) throw withErr
+
+      // 2. Fetch current wallet
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', item.user_id)
+        .single()
+
+      if (wallet) {
+        // Refund withdrawal amount back to user wallet balance
+        const newBalance = (wallet.balance || 0) + item.amount
+        
+        // 3. Update wallet balance
+        await supabase
+          .from('wallets')
+          .update({ balance: newBalance })
+          .eq('user_id', item.user_id)
+      }
+
+      setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'rejected' as Status } : i))
+    } catch (e: any) {
+      alert('Lỗi từ chối rút tiền: ' + e.message)
+    }
+  }
 
   const filtered = items.filter(i => {
     const matchesFilter = filter === 'all' ? true : i.status === filter
@@ -59,7 +164,11 @@ export default function AdminWithdrawalsPage() {
     setCurrentPage(1)
   }
 
-  const counts = { pending: items.filter(i => i.status === 'pending').length, approved: items.filter(i => i.status === 'approved').length, rejected: items.filter(i => i.status === 'rejected').length }
+  const counts = {
+    pending: items.filter(i => i.status === 'pending').length,
+    approved: items.filter(i => i.status === 'approved').length,
+    rejected: items.filter(i => i.status === 'rejected').length
+  }
 
   return (
     <div>

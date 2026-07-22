@@ -37,141 +37,257 @@ const StatCard = ({
 
 type PendingDeposit = {
   id: string
-  user: string
-  name: string
+  user_id: string
+  user: string // phone
+  name: string // fullName
   amount: number
   time: string
 }
 
 type PendingWithdrawal = {
   id: string
-  user: string
-  name: string
+  user_id: string
+  user: string // phone
+  name: string // fullName
   amount: number
   bank: string
   time: string
 }
-
-const MOCK_PENDING_DEPOSITS: PendingDeposit[] = [
-  { id: '1', user: '0987654321', name: 'Nguyễn Văn A', amount: 50_000_000, time: '5 phút trước' },
-  { id: '2', user: '0912345678', name: 'Trần Thị B', amount: 100_000_000, time: '12 phút trước' },
-  { id: '3', user: '0967891234', name: 'Lê Văn C', amount: 25_000_000, time: '18 phút trước' },
-]
-
-const MOCK_PENDING_WITHDRAWALS: PendingWithdrawal[] = [
-  { id: '1', user: '0978123456', name: 'Phạm Văn D', amount: 30_000_000, bank: 'Vietcombank', time: '8 phút trước' },
-  { id: '2', user: '0945678901', name: 'Hoàng Thị E', amount: 75_000_000, bank: 'ACB', time: '22 phút trước' },
-]
 
 export default function AdminDashboard() {
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | '7days' | 'month' | 'custom'>('today')
   const [startDate, setStartDate] = useState('2026-07-21')
   const [endDate, setEndDate] = useState('2026-07-21')
 
-  const [pendingDeposits, setPendingDeposits] = useState<PendingDeposit[]>(MOCK_PENDING_DEPOSITS)
-  const [pendingWithdrawals, setPendingWithdrawals] = useState<PendingWithdrawal[]>(MOCK_PENDING_WITHDRAWALS)
+  const [pendingDeposits, setPendingDeposits] = useState<PendingDeposit[]>([])
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<PendingWithdrawal[]>([])
   const [notification, setNotification] = useState('')
 
   // Real data state fetched from Supabase
   const [liveStats, setLiveStats] = useState({
-    usersCount: 12,
-    usersToday: '+1 hôm nay',
-    depositTotal: '550.0 triệu',
-    depositToday: '+50tr hôm nay',
-    withdrawTotal: '175.0 triệu',
-    withdrawToday: '+30tr hôm nay',
-    investCount: 12,
-    investToday: '+3 lệnh hôm nay',
+    usersCount: 0,
+    usersToday: 'Tính từ danh sách tài khoản',
+    depositTotal: '0đ',
+    depositToday: 'Tính từ lệnh đã duyệt',
+    withdrawTotal: '0đ',
+    withdrawToday: 'Tính từ lệnh đã duyệt',
+    investCount: 0,
+    investToday: 'Hợp đồng đang sinh lãi',
   })
 
-  useEffect(() => {
-    async function fetchLiveStatsFromSupabase() {
-      try {
-        const supabase = createClient()
-        const { count: uCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
-        const { data: depData } = await supabase.from('deposits').select('amount').eq('status', 'approved')
-        const depSum = depData ? depData.reduce((acc, curr) => acc + (curr.amount || 0), 0) : 550000000
-        const { data: withData } = await supabase.from('withdrawals').select('amount').eq('status', 'approved')
-        const withSum = withData ? withData.reduce((acc, curr) => acc + (curr.amount || 0), 0) : 175000000
-        const { count: invCount } = await supabase.from('investments').select('*', { count: 'exact', head: true })
+  async function loadDashboardData() {
+    try {
+      const supabase = createClient()
 
-        const formatMoney = (n: number) => {
-          if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + ' tỷ'
-          if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' triệu'
-          return n.toLocaleString('vi-VN') + 'đ'
-        }
+      // 1. Fetch statistics
+      const { count: uCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'user')
+      const { data: depData } = await supabase.from('deposits').select('amount').eq('status', 'approved')
+      const depSum = depData ? depData.reduce((acc, curr) => acc + (curr.amount || 0), 0) : 0
+      const { data: withData } = await supabase.from('withdrawals').select('amount').eq('status', 'approved')
+      const withSum = withData ? withData.reduce((acc, curr) => acc + (curr.amount || 0), 0) : 0
+      const { count: invCount } = await supabase.from('investments').select('*', { count: 'exact', head: true })
 
-        setLiveStats({
-          usersCount: uCount || 12,
-          usersToday: `Tải từ Supabase (${uCount || 12} user)`,
-          depositTotal: formatMoney(depSum),
-          depositToday: 'Tính từ lệnh đã duyệt',
-          withdrawTotal: formatMoney(withSum),
-          withdrawToday: 'Tính từ lệnh đã duyệt',
-          investCount: invCount || 12,
-          investToday: `${invCount || 12} hợp đồng đang sinh lãi`,
-        })
-      } catch (err) {
-        console.log('Live stats query fallback:', err)
+      const formatMoney = (n: number) => {
+        if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + ' tỷ'
+        if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' triệu'
+        return n.toLocaleString('vi-VN') + ' VND'
       }
-    }
 
-    fetchLiveStatsFromSupabase()
+      setLiveStats({
+        usersCount: uCount || 0,
+        usersToday: `Đã đăng ký hệ thống`,
+        depositTotal: formatMoney(depSum),
+        depositToday: 'Tính từ các giao dịch thành công',
+        withdrawTotal: formatMoney(withSum),
+        withdrawToday: 'Tính từ các giao dịch thành công',
+        investCount: invCount || 0,
+        investToday: `${invCount || 0} hợp đồng đang hiệu lực`,
+      })
+
+      // 2. Fetch pending deposits
+      const { data: rawDeps } = await supabase
+        .from('deposits')
+        .select('*, profiles(phone, full_name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (rawDeps) {
+        setPendingDeposits(rawDeps.map(d => ({
+          id: d.id,
+          user_id: d.user_id,
+          user: d.profiles?.phone || 'N/A',
+          name: d.profiles?.full_name || 'Khách hàng',
+          amount: d.amount || 0,
+          time: d.created_at ? d.created_at.replace('T', ' ').slice(11, 16) : 'Vừa xong'
+        })))
+      }
+
+      // 3. Fetch pending withdrawals
+      const { data: rawWiths } = await supabase
+        .from('withdrawals')
+        .select('*, profiles(phone, full_name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (rawWiths) {
+        setPendingWithdrawals(rawWiths.map(w => ({
+          id: w.id,
+          user_id: w.user_id,
+          user: w.profiles?.phone || 'N/A',
+          name: w.profiles?.full_name || 'Khách hàng',
+          amount: w.amount || 0,
+          bank: w.bank_name || 'Vietcombank',
+          time: w.created_at ? w.created_at.replace('T', ' ').slice(11, 16) : 'Vừa xong'
+        })))
+      }
+    } catch (err) {
+      console.log('Error loading dashboard stats:', err)
+    }
+  }
+
+  useEffect(() => {
+    loadDashboardData()
   }, [dateFilter, startDate, endDate])
 
   // Handle direct Approve deposit
   const handleApproveDeposit = async (id: string, name: string, amount: number) => {
-    setPendingDeposits(prev => prev.filter(item => item.id !== id))
-    setNotification(`✓ Đã duyệt thành công lệnh nạp +${amount.toLocaleString('vi-VN')}đ của ${name}`)
-    setTimeout(() => setNotification(''), 4000)
+    const dep = pendingDeposits.find(d => d.id === id)
+    if (!dep) return
 
     try {
       const supabase = createClient()
-      await supabase.from('deposits').update({ status: 'approved' }).eq('id', id)
-    } catch (e) {
-      console.log('Local deposit approve simulated:', e)
+      
+      // 1. Update status
+      const { error: depErr } = await supabase
+        .from('deposits')
+        .update({ status: 'approved' })
+        .eq('id', id)
+
+      if (depErr) throw depErr
+
+      // 2. Fetch user wallet
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance, total_deposited')
+        .eq('user_id', dep.user_id)
+        .single()
+
+      if (wallet) {
+        const newBalance = (wallet.balance || 0) + dep.amount
+        const newTotalDep = (wallet.total_deposited || 0) + dep.amount
+
+        // 3. Update wallet balance
+        await supabase
+          .from('wallets')
+          .update({ balance: newBalance, total_deposited: newTotalDep })
+          .eq('user_id', dep.user_id)
+      }
+
+      setNotification(`✓ Đã duyệt thành công lệnh nạp +${amount.toLocaleString('vi-VN')}đ của ${name}`)
+      loadDashboardData()
+      setTimeout(() => setNotification(''), 4000)
+    } catch (e: any) {
+      alert('Lỗi duyệt nạp tiền: ' + e.message)
     }
   }
 
   // Handle direct Reject deposit
   const handleRejectDeposit = async (id: string, name: string) => {
-    setPendingDeposits(prev => prev.filter(item => item.id !== id))
-    setNotification(`✕ Đã từ chối lệnh nạp tiền của ${name}`)
-    setTimeout(() => setNotification(''), 4000)
-
     try {
       const supabase = createClient()
-      await supabase.from('deposits').update({ status: 'rejected' }).eq('id', id)
-    } catch (e) {
-      console.log('Local deposit reject simulated:', e)
+      const { error } = await supabase
+        .from('deposits')
+        .update({ status: 'rejected' })
+        .eq('id', id)
+
+      if (error) throw error
+
+      setNotification(`✕ Đã từ chối lệnh nạp tiền của ${name}`)
+      loadDashboardData()
+      setTimeout(() => setNotification(''), 4000)
+    } catch (e: any) {
+      alert('Lỗi từ chối nạp tiền: ' + e.message)
     }
   }
 
   // Handle direct Approve withdrawal
   const handleApproveWithdrawal = async (id: string, name: string, amount: number) => {
-    setPendingWithdrawals(prev => prev.filter(item => item.id !== id))
-    setNotification(`✓ Đã duyệt thành công lệnh rút -${amount.toLocaleString('vi-VN')}đ của ${name}`)
-    setTimeout(() => setNotification(''), 4000)
+    const item = pendingWithdrawals.find(w => w.id === id)
+    if (!item) return
 
     try {
       const supabase = createClient()
-      await supabase.from('withdrawals').update({ status: 'approved' }).eq('id', id)
-    } catch (e) {
-      console.log('Local withdrawal approve simulated:', e)
+      
+      // 1. Update status
+      const { error: withErr } = await supabase
+        .from('withdrawals')
+        .update({ status: 'approved' })
+        .eq('id', id)
+
+      if (withErr) throw withErr
+
+      // 2. Fetch wallet
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('total_withdrawn')
+        .eq('user_id', item.user_id)
+        .single()
+
+      if (wallet) {
+        const newTotal = (wallet.total_withdrawn || 0) + item.amount
+        
+        // 3. Update total withdrawn
+        await supabase
+          .from('wallets')
+          .update({ total_withdrawn: newTotal })
+          .eq('user_id', item.user_id)
+      }
+
+      setNotification(`✓ Đã duyệt thành công lệnh rút -${amount.toLocaleString('vi-VN')}đ của ${name}`)
+      loadDashboardData()
+      setTimeout(() => setNotification(''), 4000)
+    } catch (e: any) {
+      alert('Lỗi duyệt rút tiền: ' + e.message)
     }
   }
 
   // Handle direct Reject withdrawal
   const handleRejectWithdrawal = async (id: string, name: string) => {
-    setPendingWithdrawals(prev => prev.filter(item => item.id !== id))
-    setNotification(`✕ Đã từ chối lệnh rút tiền của ${name}`)
-    setTimeout(() => setNotification(''), 4000)
+    const item = pendingWithdrawals.find(w => w.id === id)
+    if (!item) return
 
     try {
       const supabase = createClient()
-      await supabase.from('withdrawals').update({ status: 'rejected' }).eq('id', id)
-    } catch (e) {
-      console.log('Local withdrawal reject simulated:', e)
+      
+      // 1. Update status
+      const { error: withErr } = await supabase
+        .from('withdrawals')
+        .update({ status: 'rejected' })
+        .eq('id', id)
+
+      if (withErr) throw withErr
+
+      // 2. Fetch wallet
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', item.user_id)
+        .single()
+
+      if (wallet) {
+        // Refund
+        const newBalance = (wallet.balance || 0) + item.amount
+        await supabase
+          .from('wallets')
+          .update({ balance: newBalance })
+          .eq('user_id', item.user_id)
+      }
+
+      setNotification(`✕ Đã từ chối và hoàn tiền lệnh rút của ${name}`)
+      loadDashboardData()
+      setTimeout(() => setNotification(''), 4000)
+    } catch (e: any) {
+      alert('Lỗi từ chối rút tiền: ' + e.message)
     }
   }
 
@@ -180,9 +296,9 @@ export default function AdminDashboard() {
       {/* Page header */}
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>Dashboard Thống Kê Thật Supabase</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>Dashboard Thống Kê</h1>
           <p style={{ fontSize: 14, color: '#6B7280' }}>
-            Tổng quan hệ thống Vinpearl Invest — Tính toán thời gian thực từ CSDL Supabase
+            Tổng quan hệ thống Vingroup QPL — Tính toán thời gian thực từ CSDL Supabase
           </p>
         </div>
 
@@ -409,7 +525,7 @@ export default function AdminDashboard() {
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { label: 'Thêm dự án mới', href: '/admin/projects/new', icon: '🏖️', bg: '#FEF2F2' },
+            { label: 'Thêm dự án mới', href: '/admin/projects', icon: '🏖️', bg: '#FEF2F2' },
             { label: 'Xem tất cả user', href: '/admin/users', icon: '👥', bg: '#EFF6FF' },
             { label: 'Cài ngân hàng', href: '/admin/bank', icon: '🏦', bg: '#ECFDF5' },
             { label: 'Sửa giới thiệu', href: '/admin/about', icon: '📝', bg: '#FFFBEB' },

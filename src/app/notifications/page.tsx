@@ -26,7 +26,7 @@ const MOCK_USER_NOTIFS: UserNotif[] = [
     id: '2',
     type: 'profit',
     title: '💰 Nhận lợi nhuận hàng ngày',
-    content: 'Bạn vừa nhận được +400,000 VND lợi nhuận cổ tức từ dự án Vinpearl Resort & Spa Hạ Long.',
+    content: 'Bạn vừa nhận được +400,000 VND lợi nhuận cổ tức từ dự án Vingroup QPL Resort & Spa Hạ Long.',
     time: '2026-07-21 09:00',
     unread: true,
   },
@@ -34,7 +34,7 @@ const MOCK_USER_NOTIFS: UserNotif[] = [
     id: '3',
     type: 'system',
     title: '📢 Thông báo cập nhật hệ thống',
-    content: 'Vinpearl Invest chính thức cập nhật thêm tính năng tra cứu Mã số pháp lý cho tất cả 10 dự án.',
+    content: 'Vingroup QPL chính thức cập nhật thêm tính năng tra cứu Mã số pháp lý cho tất cả 10 dự án.',
     time: '2026-07-20 18:00',
     unread: false,
   },
@@ -57,7 +57,7 @@ export default function UserNotificationsPage() {
         color: 'white'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link href="/home" style={{
+          <Link href="/trang-chu" style={{
             color: 'white', textDecoration: 'none',
             background: 'rgba(255,255,255,0.2)',
             borderRadius: '50%', width: 36, height: 36,

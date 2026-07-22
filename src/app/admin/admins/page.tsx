@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AdminManagementPage() {
   // Main Admin password change state
@@ -16,16 +17,43 @@ export default function AdminManagementPage() {
   const [subUsername, setSubUsername] = useState('')
   const [subPassword, setSubPassword] = useState('')
   const [subName, setSubName] = useState('')
+  const [subReferralCode, setSubReferralCode] = useState('')
   const [subRole, setSubRole] = useState('Admin Phụ (CSKH & Nạp Rút)')
   const [subMsg, setSubMsg] = useState('')
 
-  useEffect(() => {
-    const savedSubs = localStorage.getItem('subAdmins')
-    if (savedSubs) {
-      try {
+  async function loadSubAdmins() {
+    try {
+      const supabase = createClient()
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'admin')
+        .neq('phone', 'admin') // Exclude main admin
+
+      if (!error && profiles) {
+        const mapped = profiles.map(p => ({
+          id: p.id,
+          username: p.phone,
+          name: p.full_name,
+          password: p.password || '••••••••',
+          role: 'Admin Phụ (CSKH & Nạp Rút)',
+          referralCode: p.referral_code || '',
+          createdAt: p.created_at ? p.created_at.split('T')[0] : 'Vừa xong'
+        }))
+        setSubAdmins(mapped)
+        localStorage.setItem('subAdmins', JSON.stringify(mapped))
+      }
+    } catch (err) {
+      console.log('Using local fallback for sub-admins:', err)
+      const savedSubs = localStorage.getItem('subAdmins')
+      if (savedSubs) {
         setSubAdmins(JSON.parse(savedSubs))
-      } catch (e) {}
+      }
     }
+  }
+
+  useEffect(() => {
+    loadSubAdmins()
   }, [])
 
   const handleChangeMainPassword = (e: React.FormEvent) => {
@@ -59,38 +87,78 @@ export default function AdminManagementPage() {
     setTimeout(() => setPwdMsg(''), 3000)
   }
 
-  const handleAddSubAdmin = (e: React.FormEvent) => {
+  const handleUsernameChange = (val: string) => {
+    setSubUsername(val)
+    // Auto-generate clean referral code based on username
+    const cleanUser = val.trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    setSubReferralCode('VIN' + cleanUser)
+  }
+
+  const handleAddSubAdmin = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubMsg('')
 
     if (!subUsername || !subPassword) return
 
-    const newSub = {
-      id: Date.now().toString(),
-      username: subUsername.trim().toLowerCase(),
-      password: subPassword,
-      name: subName || subUsername,
-      role: subRole,
-      createdAt: new Date().toLocaleDateString('vi-VN')
+    const finalRefCode = subReferralCode.trim().toUpperCase() || ('VIN' + subUsername.trim().toUpperCase())
+
+    try {
+      const supabase = createClient()
+      
+      // 1. Check if phone (username) already exists in profiles
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', subUsername.trim().toLowerCase())
+        .maybeSingle()
+
+      if (existing) {
+        alert('⚠️ Tên đăng nhập này đã tồn tại trong hệ thống! Vui lòng chọn tên khác.')
+        return
+      }
+
+      const subId = crypto.randomUUID()
+
+      // 2. Insert sub-admin to profiles table in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .insert([{
+          id: subId,
+          phone: subUsername.trim().toLowerCase(),
+          full_name: subName || subUsername,
+          role: 'admin',
+          password: subPassword,
+          referral_code: finalRefCode,
+          status: 'active'
+        }])
+
+      if (error) throw error
+
+      setShowAddSubModal(false)
+      setSubUsername('')
+      setSubPassword('')
+      setSubName('')
+      setSubReferralCode('')
+      setSubMsg('✓ Đã tạo tài khoản Admin phụ và mã giới thiệu thành công!')
+      loadSubAdmins()
+      setTimeout(() => setSubMsg(''), 3000)
+    } catch (err: any) {
+      alert('Lỗi tạo tài khoản: ' + err.message)
     }
-
-    const updated = [...subAdmins, newSub]
-    setSubAdmins(updated)
-    localStorage.setItem('subAdmins', JSON.stringify(updated))
-
-    setShowAddSubModal(false)
-    setSubUsername('')
-    setSubPassword('')
-    setSubName('')
-    setSubMsg('✓ Đã tạo tài khoản Admin phụ thành công!')
-    setTimeout(() => setSubMsg(''), 3000)
   }
 
-  const handleDeleteSubAdmin = (id: string) => {
+  const handleDeleteSubAdmin = async (id: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa tài khoản Admin phụ này không?')) {
-      const updated = subAdmins.filter(s => s.id !== id)
-      setSubAdmins(updated)
-      localStorage.setItem('subAdmins', JSON.stringify(updated))
+      try {
+        const supabase = createClient()
+        // Delete from Supabase
+        const { error } = await supabase.from('profiles').delete().eq('id', id)
+        if (error) throw error
+
+        loadSubAdmins()
+      } catch (err: any) {
+        alert('Lỗi xóa tài khoản: ' + err.message)
+      }
     }
   }
 
@@ -219,7 +287,7 @@ export default function AdminManagementPage() {
               </button>
             </div>
             <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
-              Tạo thêm tài khoản đăng nhập phụ cho nhân viên CSKH hoặc nhân viên duyệt lệnh nạp/rút.
+              Tạo thêm tài khoản đăng nhập phụ cho nhân viên CSKH hoặc nhân viên duyệt lệnh nạp/rút. Mỗi Admin phụ sẽ đi kèm 1 Mã giới thiệu riêng để phát triển hệ thống.
             </p>
 
             <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
@@ -250,6 +318,7 @@ export default function AdminManagementPage() {
             <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#64748B', fontSize: 12, fontWeight: 700 }}>
               <th style={{ padding: '12px 16px' }}>TÊN ĐĂNG NHẬP</th>
               <th style={{ padding: '12px 16px' }}>TÊN HIỂN THỊ</th>
+              <th style={{ padding: '12px 16px' }}>MÃ GIỚI THIỆU</th>
               <th style={{ padding: '12px 16px' }}>VAI TRÒ / PHÂN QUYỀN</th>
               <th style={{ padding: '12px 16px' }}>MẬT KHẨU</th>
               <th style={{ padding: '12px 16px', textAlign: 'right' }}>THAO TÁC</th>
@@ -260,6 +329,7 @@ export default function AdminManagementPage() {
             <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
               <td style={{ padding: '16px', fontWeight: 800, color: '#C8102E' }}>admin</td>
               <td style={{ padding: '16px', fontWeight: 700 }}>Admin Chính (Chủ hệ thống)</td>
+              <td style={{ padding: '16px', fontWeight: 700, color: '#64748B' }}>VINSYSTEM</td>
               <td style={{ padding: '16px' }}>
                 <span style={{ background: '#FEF2F2', color: '#C8102E', padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
                   Quản trị viên Cao cấp
@@ -276,6 +346,7 @@ export default function AdminManagementPage() {
               <tr key={sub.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                 <td style={{ padding: '16px', fontWeight: 800, color: '#0F172A' }}>{sub.username}</td>
                 <td style={{ padding: '16px', fontWeight: 600 }}>{sub.name}</td>
+                <td style={{ padding: '16px', fontWeight: 800, color: '#0068FF' }}>{sub.referralCode}</td>
                 <td style={{ padding: '16px' }}>
                   <span style={{ background: '#EFF6FF', color: '#2563EB', padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
                     {sub.role}
@@ -337,8 +408,22 @@ export default function AdminManagementPage() {
                 <input
                   type="text"
                   value={subUsername}
-                  onChange={e => setSubUsername(e.target.value)}
+                  onChange={e => handleUsernameChange(e.target.value)}
                   placeholder="VD: admin_cskh1"
+                  required
+                  style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                  Mã giới thiệu (Auto-gen hoặc tự nhập) *
+                </label>
+                <input
+                  type="text"
+                  value={subReferralCode}
+                  onChange={e => setSubReferralCode(e.target.value.toUpperCase())}
+                  placeholder="VD: VINCSKH1"
                   required
                   style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                 />

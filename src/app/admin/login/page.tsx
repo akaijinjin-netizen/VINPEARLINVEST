@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
         </div>
 
         <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', marginBottom: 4, letterSpacing: -0.5 }}>
-          VINPEARL INVEST
+          VINGROUP QPL INVEST
         </h2>
         <div style={{ fontSize: 11, fontWeight: 800, color: '#C8102E', letterSpacing: 2, marginBottom: 24 }}>
           KHÓA ĐĂNG NHẬP BẢO MẬT HẬU ĐÀI ADMIN
@@ -151,7 +151,7 @@ export default function AdminLoginPage() {
         </form>
 
         <div style={{ marginTop: 24, fontSize: 12, color: '#9CA3AF' }}>
-          Hệ thống bảo vệ phân quyền Admin Vinpearl Invest v2.5
+          Hệ thống bảo vệ phân quyền Admin Vingroup QPL v2.5
         </div>
       </div>
     </div>

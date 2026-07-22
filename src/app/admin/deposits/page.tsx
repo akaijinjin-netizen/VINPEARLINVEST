@@ -1,25 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Pagination from '@/components/Pagination'
+import { createClient } from '@/lib/supabase/client'
 
 type Status = 'pending' | 'approved' | 'rejected'
 
-const MOCK_DEPOSITS = [
-  { id: '1', user: '0987654321', userName: 'Nguyễn Văn A', amount: 50_000_000, bank: 'ACB', content: 'NAPTIEN 278', time: '2026-07-21 14:15', status: 'pending' as Status },
-  { id: '2', user: '0912345678', userName: 'Trần Thị B', amount: 100_000_000, bank: 'Vietcombank', content: 'NAPTIEN 279', time: '2026-07-21 14:02', status: 'pending' as Status },
-  { id: '3', user: '0967891234', userName: 'Lê Văn C', amount: 25_000_000, bank: 'Techcombank', content: 'NAPTIEN 280', time: '2026-07-21 13:45', status: 'pending' as Status },
-  { id: '4', user: '0956789012', userName: 'Phạm Thị D', amount: 200_000_000, bank: 'ACB', content: 'NAPTIEN 281', time: '2026-07-21 12:30', status: 'approved' as Status },
-  { id: '5', user: '0934567890', userName: 'Hoàng Văn E', amount: 75_000_000, bank: 'BIDV', content: 'NAPTIEN 282', time: '2026-07-21 11:10', status: 'rejected' as Status },
-  { id: '6', user: '0941122334', userName: 'Đỗ Văn F', amount: 30_000_000, bank: 'MB Bank', content: 'NAPTIEN 283', time: '2026-07-21 10:45', status: 'pending' as Status },
-  { id: '7', user: '0977889900', userName: 'Vũ Thị G', amount: 150_000_000, bank: 'Vietcombank', content: 'NAPTIEN 284', time: '2026-07-21 10:15', status: 'approved' as Status },
-  { id: '8', user: '0981122334', userName: 'Bùi Văn H', amount: 80_000_000, bank: 'ACB', content: 'NAPTIEN 285', time: '2026-07-21 09:50', status: 'pending' as Status },
-  { id: '9', user: '0919988776', userName: 'Đặng Thị K', amount: 40_000_000, bank: 'Techcombank', content: 'NAPTIEN 286', time: '2026-07-21 09:20', status: 'pending' as Status },
-  { id: '10', user: '0933445566', userName: 'Phan Văn L', amount: 120_000_000, bank: 'BIDV', content: 'NAPTIEN 287', time: '2026-07-21 08:40', status: 'approved' as Status },
-  { id: '11', user: '0966778899', userName: 'Trịnh Thị M', amount: 60_000_000, bank: 'VPBank', content: 'NAPTIEN 288', time: '2026-07-20 22:10', status: 'pending' as Status },
-  { id: '12', user: '0922334455', userName: 'Dương Văn N', amount: 90_000_000, bank: 'ACB', content: 'NAPTIEN 289', time: '2026-07-20 21:30', status: 'approved' as Status },
-  { id: '13', user: '0944556677', userName: 'Lý Thị P', amount: 110_000_000, bank: 'Vietcombank', content: 'NAPTIEN 290', time: '2026-07-20 20:00', status: 'rejected' as Status },
-]
+type Deposit = {
+  id: string
+  user_id: string
+  user: string // phone
+  userName: string // fullName
+  amount: number
+  bank: string
+  content: string
+  time: string
+  status: Status
+  billImage?: string
+}
 
 const STATUS_MAP: Record<Status, { label: string; color: string; bg: string; border: string }> = {
   pending:  { label: 'Chờ duyệt', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
@@ -30,16 +28,100 @@ const STATUS_MAP: Record<Status, { label: string; color: string; bg: string; bor
 const ITEMS_PER_PAGE = 10
 
 export default function AdminDepositsPage() {
-  const [deposits, setDeposits] = useState(MOCK_DEPOSITS)
+  const [deposits, setDeposits] = useState<Deposit[]>([])
   const [filter, setFilter] = useState<'all' | Status>('pending')
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedBill, setSelectedBill] = useState<string | null>(null)
 
-  const approve = (id: string) => {
-    setDeposits(prev => prev.map(d => d.id === id ? { ...d, status: 'approved' as Status } : d))
+  async function fetchDepositsFromSupabase() {
+    try {
+      const supabase = createClient()
+      const { data: depData, error } = await supabase
+        .from('deposits')
+        .select('*, profiles(phone, full_name)')
+        .order('created_at', { ascending: false })
+
+      if (!error && depData) {
+        const mapped: Deposit[] = depData.map(d => ({
+          id: d.id,
+          user_id: d.user_id,
+          user: d.profiles?.phone || 'N/A',
+          userName: d.profiles?.full_name || 'Khách hàng',
+          amount: d.amount || 0,
+          bank: d.bank_name || 'ACB',
+          content: d.transfer_content || '',
+          time: d.created_at ? d.created_at.replace('T', ' ').slice(0, 16) : 'Vừa xong',
+          status: d.status as Status,
+          billImage: d.bill_image || undefined
+        }))
+        setDeposits(mapped)
+      }
+    } catch (e) {
+      console.error(e)
+    }
   }
-  const reject = (id: string) => {
-    setDeposits(prev => prev.map(d => d.id === id ? { ...d, status: 'rejected' as Status } : d))
+
+  useEffect(() => {
+    fetchDepositsFromSupabase()
+  }, [])
+
+  const approve = async (id: string) => {
+    const dep = deposits.find(d => d.id === id)
+    if (!dep) return
+
+    try {
+      const supabase = createClient()
+      
+      // 1. Update deposit status to approved
+      const { error: depErr } = await supabase
+        .from('deposits')
+        .update({ status: 'approved' })
+        .eq('id', id)
+
+      if (depErr) throw depErr
+
+      // 2. Fetch current user wallet
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance, total_deposited')
+        .eq('user_id', dep.user_id)
+        .single()
+
+      if (wallet) {
+        const newBalance = (wallet.balance || 0) + dep.amount
+        const newTotalDep = (wallet.total_deposited || 0) + dep.amount
+
+        // 3. Update user wallet balance & total deposited
+        await supabase
+          .from('wallets')
+          .update({
+            balance: newBalance,
+            total_deposited: newTotalDep
+          })
+          .eq('user_id', dep.user_id)
+      }
+
+      setDeposits(prev => prev.map(d => d.id === id ? { ...d, status: 'approved' as Status } : d))
+    } catch (e: any) {
+      alert('Lỗi phê duyệt nạp tiền: ' + e.message)
+    }
+  }
+
+  const reject = async (id: string) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('deposits')
+        .update({ status: 'rejected' })
+        .eq('id', id)
+
+      if (error) throw error
+
+      setDeposits(prev => prev.map(d => d.id === id ? { ...d, status: 'rejected' as Status } : d))
+    } catch (e: any) {
+      alert('Lỗi từ chối nạp tiền: ' + e.message)
+    }
   }
 
   const filtered = deposits.filter(d => {
@@ -94,7 +176,7 @@ export default function AdminDepositsPage() {
       </div>
 
       {/* Filter and Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
+      <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => (
             <button key={tab} onClick={() => handleFilterChange(tab)} style={{
@@ -125,7 +207,7 @@ export default function AdminDepositsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-              {['Người dùng', 'Số tiền nạp', 'Ngân hàng & Mã nạp', 'Thời gian', 'Trạng thái', 'Thao tác'].map(h => (
+              {['Người dùng', 'Số tiền nạp', 'Ngân hàng & Mã nạp', 'Bill chuyển tiền', 'Thời gian', 'Trạng thái', 'Thao tác'].map(h => (
                 <th key={h} style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280', letterSpacing: 0.5 }}>{h}</th>
               ))}
             </tr>
@@ -147,6 +229,21 @@ export default function AdminDepositsPage() {
                   <div style={{ fontSize: 12, color: '#C8102E', fontWeight: 700, letterSpacing: 0.5, marginTop: 2 }}>
                     {dep.content}
                   </div>
+                </td>
+                <td style={{ padding: '14px 20px' }}>
+                  {dep.billImage ? (
+                    <button
+                      onClick={() => setSelectedBill(dep.billImage || null)}
+                      style={{
+                        background: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE',
+                        borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                      }}
+                    >
+                      🖼️ Xem ảnh
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 12, color: '#9CA3AF' }}>Không có ảnh</span>
+                  )}
                 </td>
                 <td style={{ padding: '14px 20px', fontSize: 13, color: '#6B7280' }}>
                   {dep.time}
@@ -205,6 +302,26 @@ export default function AdminDepositsPage() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* Bill image modal viewer */}
+      {selectedBill && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000,
+          padding: 20
+        }} onClick={() => setSelectedBill(null)}>
+          <div style={{ maxWidth: '90%', maxHeight: '90%' }}>
+            <img
+              src={selectedBill}
+              alt="Hóa đơn chuyển khoản"
+              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8, border: '4px solid white' }}
+            />
+            <div style={{ color: 'white', textAlign: 'center', marginTop: 12, fontSize: 14, fontWeight: 700 }}>
+              Nhấp vào bất kỳ đâu để đóng ảnh
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -48,7 +48,7 @@ export default function SecurityGuard() {
       }
     }
 
-    // Attach global security event listeners
+    // Attach global security event listeners (Active protection)
     document.addEventListener('contextmenu', handleContextMenu)
     document.addEventListener('keydown', handleKeyDown)
 

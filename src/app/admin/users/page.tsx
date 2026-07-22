@@ -16,21 +16,18 @@ type User = {
   bankName?: string
   bankAccountName?: string
   bankAccountNumber?: string
+  vipLevel?: number
+  address?: string
+  idCard?: string
+  password?: string
+  referralCode?: string
+  referrerPhone?: string
 }
 
 const MOCK_USERS: User[] = [
-  { id: '1', phone: '0987654321', fullName: 'Nguyễn Văn A', balance: 50000000, totalDeposited: 100000000, totalWithdrawn: 50000000, status: 'active', createdAt: '2026-07-20', bankName: 'Vietcombank', bankAccountName: 'NGUYEN VAN A', bankAccountNumber: '1234567890' },
-  { id: '2', phone: '0912345678', fullName: 'Trần Thị B', balance: 120000000, totalDeposited: 150000000, totalWithdrawn: 30000000, status: 'active', createdAt: '2026-07-19', bankName: 'ACB', bankAccountName: 'TRAN THI B', bankAccountNumber: '9876543210' },
-  { id: '3', phone: '0967891234', fullName: 'Lê Văn C', balance: 0, totalDeposited: 25000000, totalWithdrawn: 25000000, status: 'locked', createdAt: '2026-07-18', bankName: 'Techcombank', bankAccountName: 'LE VAN C', bankAccountNumber: '5555666677' },
-  { id: '4', phone: '0956789012', fullName: 'Phạm Thị D', balance: 250000000, totalDeposited: 300000000, totalWithdrawn: 50000000, status: 'active', createdAt: '2026-07-15', bankName: 'MB Bank', bankAccountName: 'PHAM THI D', bankAccountNumber: '1111222233' },
-  { id: '5', phone: '0934567890', fullName: 'Hoàng Văn E', balance: 15000000, totalDeposited: 75000000, totalWithdrawn: 60000000, status: 'active', createdAt: '2026-07-14', bankName: 'BIDV', bankAccountName: 'HOANG VAN E', bankAccountNumber: '9999888877' },
-  { id: '6', phone: '0941122334', fullName: 'Đỗ Văn F', balance: 30000000, totalDeposited: 30000000, totalWithdrawn: 0, status: 'active', createdAt: '2026-07-13', bankName: 'VietinBank', bankAccountName: 'DO VAN F', bankAccountNumber: '3333444455' },
-  { id: '7', phone: '0977889900', fullName: 'Vũ Thị G', balance: 150000000, totalDeposited: 150000000, totalWithdrawn: 0, status: 'active', createdAt: '2026-07-12', bankName: 'ACB', bankAccountName: 'VU THI G', bankAccountNumber: '7777888899' },
-  { id: '8', phone: '0981122334', fullName: 'Bùi Văn H', balance: 80000000, totalDeposited: 80000000, totalWithdrawn: 0, status: 'active', createdAt: '2026-07-11', bankName: 'Techcombank', bankAccountName: 'BUI VAN H', bankAccountNumber: '2222111100' },
-  { id: '9', phone: '0919988776', fullName: 'Đặng Thị K', balance: 40000000, totalDeposited: 40000000, totalWithdrawn: 0, status: 'active', createdAt: '2026-07-10', bankName: 'VPBank', bankAccountName: 'DANG THI K', bankAccountNumber: '6666555544' },
-  { id: '10', phone: '0933445566', fullName: 'Phan Văn L', balance: 120000000, totalDeposited: 120000000, totalWithdrawn: 0, status: 'active', createdAt: '2026-07-09', bankName: 'Vietcombank', bankAccountName: 'PHAN VAN L', bankAccountNumber: '8888777766' },
-  { id: '11', phone: '0966778899', fullName: 'Trịnh Thị M', balance: 60000000, totalDeposited: 60000000, totalWithdrawn: 0, status: 'locked', createdAt: '2026-07-08', bankName: 'MB Bank', bankAccountName: 'TRINH THI M', bankAccountNumber: '4444333322' },
-  { id: '12', phone: '0922334455', fullName: 'Dương Văn N', balance: 90000000, totalDeposited: 90000000, totalWithdrawn: 0, status: 'active', createdAt: '2026-07-07', bankName: 'ACB', bankAccountName: 'DUONG VAN N', bankAccountNumber: '1122334455' },
+  { id: '1', phone: '0987654321', fullName: 'Nguyễn Văn A', balance: 50000000, totalDeposited: 100000000, totalWithdrawn: 50000000, status: 'active', createdAt: '2026-07-20', bankName: 'Vietcombank', bankAccountName: 'NGUYEN VAN A', bankAccountNumber: '1234567890', vipLevel: 1 },
+  { id: '2', phone: '0912345678', fullName: 'Trần Thị B', balance: 120000000, totalDeposited: 150000000, totalWithdrawn: 30000000, status: 'active', createdAt: '2026-07-19', bankName: 'ACB', bankAccountName: 'TRAN THI B', bankAccountNumber: '9876543210', vipLevel: 2 },
+  { id: '3', phone: '0967891234', fullName: 'Lê Văn C', balance: 0, totalDeposited: 25000000, totalWithdrawn: 25000000, status: 'locked', createdAt: '2026-07-18', bankName: 'Techcombank', bankAccountName: 'LE VAN C', bankAccountNumber: '5555666677', vipLevel: 0 },
 ]
 
 const BANKS_LIST = ['Vietcombank', 'ACB', 'Techcombank', 'BIDV', 'MB Bank', 'VPBank', 'Sacombank', 'Agribank', 'TPBank', 'VietinBank']
@@ -53,39 +50,59 @@ export default function AdminUsersPage() {
     newPassword: '',
     bankName: '',
     bankAccountName: '',
-    bankAccountNumber: ''
+    bankAccountNumber: '',
+    vipLevel: 0,
+    address: '',
+    idCard: '',
+    referralCode: '',
+    referrerPhone: ''
   })
   const [editSaved, setEditSaved] = useState(false)
 
-  useEffect(() => {
-    async function fetchUsersFromSupabase() {
-      try {
-        const supabase = createClient()
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('*, wallets(*)')
-          .order('created_at', { ascending: false })
+  async function fetchUsersFromSupabase() {
+    try {
+      const supabase = createClient()
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*, wallets(*)')
+        .order('created_at', { ascending: false })
 
-        if (!error && profiles && profiles.length > 0) {
-          const mapped: User[] = profiles.map(p => ({
-            id: p.id,
-            phone: p.phone || 'Chưa cập nhật',
-            fullName: p.full_name || 'Người dùng mới',
-            balance: p.wallets?.balance || 0,
-            totalDeposited: p.wallets?.total_deposited || 0,
-            totalWithdrawn: p.wallets?.total_withdrawn || 0,
-            status: (p.status as any) || 'active',
-            createdAt: p.created_at ? p.created_at.split('T')[0] : '2026-07-21',
-            bankName: p.bank_name || 'Vietcombank',
-            bankAccountName: p.bank_account_name || p.full_name?.toUpperCase() || '',
-            bankAccountNumber: p.bank_account_number || '1234567890'
-          }))
-          setUsers(mapped)
-        }
-      } catch (err) {
-        console.log('Using seed user list fallback:', err)
+      if (!error && profiles && profiles.length > 0) {
+        // Create local map for user_id -> phone to resolve referrerPhone
+        const phoneMap: Record<string, string> = {}
+        profiles.forEach(p => {
+          if (p.id && p.phone) {
+            phoneMap[p.id] = p.phone
+          }
+        })
+
+        const mapped: User[] = profiles.map(p => ({
+          id: p.id,
+          phone: p.phone || 'Chưa cập nhật',
+          fullName: p.full_name || 'Người dùng mới',
+          balance: p.wallets?.balance || 0,
+          totalDeposited: p.wallets?.total_deposited || 0,
+          totalWithdrawn: p.wallets?.total_withdrawn || 0,
+          status: (p.status as any) || 'active',
+          createdAt: p.created_at ? p.created_at.split('T')[0] : '2026-07-21',
+          bankName: p.bank_name || '',
+          bankAccountName: p.bank_account_name || '',
+          bankAccountNumber: p.bank_account_number || '',
+          vipLevel: p.vip_level ?? 0,
+          address: p.address || '',
+          idCard: p.id_card || '',
+          password: p.password || '',
+          referralCode: p.referral_code || '',
+          referrerPhone: p.referrer_id ? (phoneMap[p.referrer_id] || 'N/A') : 'Không có'
+        }))
+        setUsers(mapped)
       }
+    } catch (err) {
+      console.log('Error fetching user list:', err)
     }
+  }
+
+  useEffect(() => {
     fetchUsersFromSupabase()
   }, [])
 
@@ -116,10 +133,15 @@ export default function AdminUsersPage() {
     setEditForm({
       fullName: user.fullName,
       phone: user.phone,
-      newPassword: '',
+      newPassword: user.password || '',
       bankName: user.bankName || 'Vietcombank',
       bankAccountName: user.bankAccountName || user.fullName.toUpperCase(),
-      bankAccountNumber: user.bankAccountNumber || ''
+      bankAccountNumber: user.bankAccountNumber || '',
+      vipLevel: user.vipLevel ?? 0,
+      address: user.address || '',
+      idCard: user.idCard || '',
+      referralCode: user.referralCode || '',
+      referrerPhone: user.referrerPhone || ''
     })
   }
 
@@ -127,35 +149,49 @@ export default function AdminUsersPage() {
     e.preventDefault()
     if (!editingUser) return
 
-    const updatedUser: User = {
-      ...editingUser,
-      fullName: editForm.fullName,
-      phone: editForm.phone,
-      bankName: editForm.bankName,
-      bankAccountName: editForm.bankAccountName,
-      bankAccountNumber: editForm.bankAccountNumber,
-    }
-
-    setUsers(prev => prev.map(u => u.id === editingUser.id ? updatedUser : u))
-
     try {
       const supabase = createClient()
-      await supabase.from('profiles').update({
+      
+      // 1. Resolve referrer_id from referrerPhone
+      let resolvedReferrerId: string | null = null
+      if (editForm.referrerPhone && editForm.referrerPhone !== 'Không có' && editForm.referrerPhone !== 'N/A') {
+        const { data: refProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone', editForm.referrerPhone.trim())
+          .maybeSingle()
+
+        if (refProfile) {
+          resolvedReferrerId = refProfile.id
+        }
+      }
+
+      // 2. Update profiles table
+      const { error } = await supabase.from('profiles').update({
         full_name: editForm.fullName,
         phone: editForm.phone,
         bank_name: editForm.bankName,
         bank_account_name: editForm.bankAccountName,
         bank_account_number: editForm.bankAccountNumber,
+        vip_level: editForm.vipLevel,
+        address: editForm.address,
+        id_card: editForm.idCard,
+        password: editForm.newPassword,
+        referral_code: editForm.referralCode,
+        referrer_id: resolvedReferrerId
       }).eq('id', editingUser.id)
-    } catch (e) {
-      console.log('Local user update simulated:', e)
-    }
 
-    setEditSaved(true)
-    setTimeout(() => {
-      setEditSaved(false)
-      setEditingUser(null)
-    }, 1500)
+      if (error) throw error
+
+      setEditSaved(true)
+      setTimeout(() => {
+        setEditSaved(false)
+        setEditingUser(null)
+        fetchUsersFromSupabase()
+      }, 1500)
+    } catch (e: any) {
+      alert('Lỗi khi cập nhật thông tin: ' + e.message)
+    }
   }
 
   const handleDeleteUser = async () => {
@@ -226,8 +262,8 @@ export default function AdminUsersPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>NGƯỜI DÙNG</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>NGÂN HÀNG LẬP RÚT</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>NGƯỜI DÙNG / GIỚI THIỆU</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>NGÂN HÀNG</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>SỐ DƯ VÍ</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>TỔNG NẠP</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>TRẠNG THÁI</th>
@@ -238,8 +274,25 @@ export default function AdminUsersPage() {
             {paginatedItems.map((user, i) => (
               <tr key={user.id} style={{ borderBottom: i < paginatedItems.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
                 <td style={{ padding: '14px 20px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{user.fullName}</div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>📱 {user.phone}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{user.fullName}</span>
+                    <span style={{
+                      background: 'linear-gradient(135deg, #F0C040 0%, #D4A373 100%)',
+                      color: '#4A3B18',
+                      fontSize: 9,
+                      fontWeight: 900,
+                      padding: '2px 5px',
+                      borderRadius: 4,
+                      lineHeight: '10px'
+                    }}>VIP {user.vipLevel ?? 0}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>📱 {user.phone}</div>
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>
+                    🔑 Mã GT: <strong style={{ color: '#0F172A' }}>{user.referralCode || 'Không có'}</strong>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#0068FF', marginTop: 1 }}>
+                    🔗 Được GT bởi: <strong style={{ color: '#0068FF' }}>{user.referrerPhone || 'Không có'}</strong>
+                  </div>
                 </td>
                 <td style={{ padding: '14px 20px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>🏦 {user.bankName || 'Chưa liên kết'}</div>
@@ -331,6 +384,19 @@ export default function AdminUsersPage() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 12 }}>👤 Thông tin cá nhân & Đăng nhập</div>
 
                 <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Cấp độ VIP *</label>
+                  <select
+                    value={editForm.vipLevel}
+                    onChange={e => setEditForm(p => ({ ...p, vipLevel: parseInt(e.target.value) }))}
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none' }}
+                  >
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
+                      <option key={v} value={v}>VIP {v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Họ và tên *</label>
                   <input
                     value={editForm.fullName}
@@ -351,13 +417,52 @@ export default function AdminUsersPage() {
                   />
                 </div>
 
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Đổi mật khẩu mới (Bỏ trống nếu không đổi)</label>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Địa chỉ</label>
                   <input
-                    type="password"
+                    value={editForm.address}
+                    onChange={e => setEditForm(p => ({ ...p, address: e.target.value }))}
+                    placeholder="Nhập địa chỉ..."
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Số CCCD</label>
+                  <input
+                    value={editForm.idCard}
+                    onChange={e => setEditForm(p => ({ ...p, idCard: e.target.value }))}
+                    placeholder="Nhập số CCCD..."
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Mật khẩu đăng nhập</label>
+                  <input
                     value={editForm.newPassword}
                     onChange={e => setEditForm(p => ({ ...p, newPassword: e.target.value }))}
-                    placeholder="Nhập mật khẩu mới cho khách..."
+                    placeholder="Nhập mật khẩu..."
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Mã giới thiệu của user</label>
+                  <input
+                    value={editForm.referralCode}
+                    onChange={e => setEditForm(p => ({ ...p, referralCode: e.target.value }))}
+                    placeholder="Ví dụ: VINXYZ"
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>SĐT người giới thiệu (Mã giới thiệu của họ)</label>
+                  <input
+                    value={editForm.referrerPhone}
+                    onChange={e => setEditForm(p => ({ ...p, referrerPhone: e.target.value }))}
+                    placeholder="Ví dụ: 0987654321"
                     style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
@@ -368,32 +473,31 @@ export default function AdminUsersPage() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#D97706', marginBottom: 12 }}>🏦 Liên kết Ngân hàng nhận tiền rút</div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Tên ngân hàng *</label>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Tên ngân hàng</label>
                   <select
                     value={editForm.bankName}
                     onChange={e => setEditForm(p => ({ ...p, bankName: e.target.value }))}
                     style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none' }}
                   >
+                    <option value="">-- Chưa liên kết --</option>
                     {BANKS_LIST.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Tên chủ tài khoản (Viết hoa không dấu) *</label>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Tên chủ tài khoản (Viết hoa không dấu)</label>
                   <input
                     value={editForm.bankAccountName}
                     onChange={e => setEditForm(p => ({ ...p, bankAccountName: e.target.value.toUpperCase() }))}
-                    required
                     style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Số tài khoản ngân hàng *</label>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Số tài khoản ngân hàng</label>
                   <input
                     value={editForm.bankAccountNumber}
                     onChange={e => setEditForm(p => ({ ...p, bankAccountNumber: e.target.value }))}
-                    required
                     style={{ width: '100%', padding: '10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 14, outline: 'none', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
                   />
                 </div>
