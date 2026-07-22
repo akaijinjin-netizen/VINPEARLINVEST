@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 type Notification = {
   id: string
@@ -15,62 +16,131 @@ type Notification = {
   type: 'deposit' | 'withdrawal' | 'user' | 'investment'
 }
 
-const MOCK_ADMIN_NOTIFS: Notification[] = [
-  {
-    id: '1',
-    type: 'deposit',
-    icon: '⬇️',
-    title: 'Lệnh nạp tiền mới chờ duyệt',
-    desc: 'Khách Nguyễn Văn A (0987654321) vừa nạp 50,000,000 VND (Mã: NAPTIEN 278)',
-    time: '5 phút trước',
-    unread: true,
-    link: '/admin/deposits',
-  },
-  {
-    id: '2',
-    type: 'withdrawal',
-    icon: '⬆️',
-    title: 'Yêu cầu rút tiền mới',
-    desc: 'Khách Phạm Văn D (0978123456) gửi yêu cầu rút 30,000,000 VND về Vietcombank',
-    time: '8 phút trước',
-    unread: true,
-    link: '/admin/withdrawals',
-  },
-  {
-    id: '3',
-    type: 'user',
-    icon: '👤',
-    title: 'Thành viên mới đăng ký',
-    desc: 'Số điện thoại 0941122334 vừa đăng ký tài khoản thành công',
-    time: '15 phút trước',
-    unread: true,
-    link: '/admin/users',
-  },
-  {
-    id: '4',
-    type: 'investment',
-    icon: '📈',
-    title: 'Lệnh đầu tư mới phát sinh',
-    desc: 'Trần Thị B vừa đầu tư 200,000,000 VND vào Grand World Phú Quốc',
-    time: '25 phút trước',
-    unread: true,
-    link: '/admin/investments',
-  },
-]
-
 export default function AdminHeader() {
-  const [notifs, setNotifs] = useState<Notification[]>(MOCK_ADMIN_NOTIFS)
+  const [notifs, setNotifs] = useState<Notification[]>([])
+  const [readNotifIds, setReadNotifIds] = useState<string[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const unreadCount = notifs.filter(n => n.unread).length
 
+  useEffect(() => {
+    // Load read notifications from localStorage
+    const saved = localStorage.getItem('readAdminNotifIds')
+    if (saved) {
+      try {
+        setReadNotifIds(JSON.parse(saved))
+      } catch (e) {}
+    }
+  }, [])
+
+  async function fetchRealNotifications() {
+    try {
+      const supabase = createClient()
+      const newNotifs: Notification[] = []
+
+      // 1. Fetch pending deposits
+      const { data: deps } = await supabase
+        .from('deposits')
+        .select('*, profiles(phone, full_name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (deps) {
+        deps.forEach(d => {
+          const id = `dep_${d.id}`
+          const isUnread = !readNotifIds.includes(id)
+          newNotifs.push({
+            id,
+            type: 'deposit',
+            icon: '⬇️',
+            title: 'Lệnh nạp tiền mới chờ duyệt',
+            desc: `Khách ${d.profiles?.full_name || 'Khách hàng'} (${d.profiles?.phone || 'N/A'}) vừa nạp ${d.amount?.toLocaleString('vi-VN')}đ`,
+            time: d.created_at ? d.created_at.replace('T', ' ').slice(11, 16) : 'Vừa xong',
+            unread: isUnread,
+            link: '/admin/deposits'
+          })
+        })
+      }
+
+      // 2. Fetch pending withdrawals
+      const { data: withs } = await supabase
+        .from('withdrawals')
+        .select('*, profiles(phone, full_name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (withs) {
+        withs.forEach(w => {
+          const id = `with_${w.id}`
+          const isUnread = !readNotifIds.includes(id)
+          newNotifs.push({
+            id,
+            type: 'withdrawal',
+            icon: '⬆️',
+            title: 'Yêu cầu rút tiền mới',
+            desc: `Khách ${w.profiles?.full_name || 'Khách hàng'} (${w.profiles?.phone || 'N/A'}) gửi yêu cầu rút ${w.amount?.toLocaleString('vi-VN')}đ`,
+            time: w.created_at ? w.created_at.replace('T', ' ').slice(11, 16) : 'Vừa xong',
+            unread: isUnread,
+            link: '/admin/withdrawals'
+          })
+        })
+      }
+
+      // 3. Fetch last 3 registered users
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'user')
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (users) {
+        users.forEach(u => {
+          const id = `user_${u.id}`
+          const isUnread = !readNotifIds.includes(id)
+          newNotifs.push({
+            id,
+            type: 'user',
+            icon: '👤',
+            title: 'Thành viên mới đăng ký',
+            desc: `Số điện thoại ${u.phone || 'N/A'} vừa đăng ký tài khoản thành công`,
+            time: u.created_at ? u.created_at.replace('T', ' ').slice(11, 16) : 'Vừa xong',
+            unread: isUnread,
+            link: '/admin/users'
+          })
+        })
+      }
+
+      // Sort notifications so unread are first
+      newNotifs.sort((a, b) => (a.unread === b.unread ? 0 : a.unread ? -1 : 1))
+
+      setNotifs(newNotifs)
+    } catch (e) {
+      console.log('Error loading notifications:', e)
+    }
+  }
+
+  useEffect(() => {
+    fetchRealNotifications()
+    // Poll notifications every 10 seconds
+    const interval = setInterval(fetchRealNotifications, 10000)
+    return () => clearInterval(interval)
+  }, [readNotifIds])
+
   const markAllAsRead = () => {
+    const allIds = notifs.map(n => n.id)
+    const updated = Array.from(new Set([...readNotifIds, ...allIds]))
+    setReadNotifIds(updated)
+    localStorage.setItem('readAdminNotifIds', JSON.stringify(updated))
     setNotifs(prev => prev.map(n => ({ ...n, unread: false })))
   }
 
   const handleItemClick = (n: Notification) => {
+    const updated = Array.from(new Set([...readNotifIds, n.id]))
+    setReadNotifIds(updated)
+    localStorage.setItem('readAdminNotifIds', JSON.stringify(updated))
     setNotifs(prev => prev.map(item => item.id === n.id ? { ...item, unread: false } : item))
     setIsOpen(false)
     router.push(n.link)
@@ -191,40 +261,46 @@ export default function AdminHeader() {
 
               {/* Items List */}
               <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-                {notifs.map(n => (
-                  <div
-                    key={n.id}
-                    onClick={() => handleItemClick(n)}
-                    style={{
-                      padding: '14px 20px',
-                      borderBottom: '1px solid #F9FAFB',
-                      background: n.unread ? '#FEF2F2' : 'white',
-                      cursor: 'pointer', display: 'flex', gap: 12,
-                      alignItems: 'flex-start', transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
-                    onMouseLeave={e => e.currentTarget.style.background = n.unread ? '#FEF2F2' : 'white'}
-                  >
-                    <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>{n.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: n.unread ? 800 : 600, color: '#0F172A' }}>
-                        {n.title}
+                {notifs.length > 0 ? (
+                  notifs.map(n => (
+                    <div
+                      key={n.id}
+                      onClick={() => handleItemClick(n)}
+                      style={{
+                        padding: '14px 20px',
+                        borderBottom: '1px solid #F9FAFB',
+                        background: n.unread ? '#FEF2F2' : 'white',
+                        cursor: 'pointer', display: 'flex', gap: 12,
+                        alignItems: 'flex-start', transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                      onMouseLeave={e => e.currentTarget.style.background = n.unread ? '#FEF2F2' : 'white'}
+                    >
+                      <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>{n.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: n.unread ? 800 : 600, color: '#0F172A' }}>
+                          {n.title}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2, lineHeight: 1.4 }}>
+                          {n.desc}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                          {n.time}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2, lineHeight: 1.4 }}>
-                        {n.desc}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-                        {n.time}
-                      </div>
+                      {n.unread && (
+                        <div style={{
+                          width: 8, height: 8, borderRadius: '50%',
+                          background: '#C8102E', flexShrink: 0, marginTop: 6
+                        }} />
+                      )}
                     </div>
-                    {n.unread && (
-                      <div style={{
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: '#C8102E', flexShrink: 0, marginTop: 6
-                      }} />
-                    )}
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF', fontSize: 13 }}>
+                    🎉 Không có thông báo giao dịch chờ duyệt!
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Dropdown Footer */}
