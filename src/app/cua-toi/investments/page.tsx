@@ -26,13 +26,13 @@ export default function UserInvestmentsPage() {
             if (data && data.length > 0) {
               setInvestments(data.map(i => ({
                 id: i.id,
-                projectName: i.projects?.name || 'Dự án đầu tư Vingroup QPL',
+                projectName: i.projects?.name || i.projects?.title || 'Dự án đầu tư Vingroup QPL',
                 amount: i.amount || 0,
-                dailyProfit: Math.floor((i.amount || 0) * (i.projects?.daily_profit_rate || 0.8) / 100),
-                dailyRate: i.projects?.daily_profit_rate || 0.8,
+                dailyProfit: Math.floor((i.amount || 0) * (i.projects?.daily_profit_rate || i.interest_rate || 0.8) / 100),
+                dailyRate: i.projects?.daily_profit_rate || i.interest_rate || 0.8,
                 profitEarned: i.profit_earned || 0,
-                startDate: i.start_time ? i.start_time.split('T')[0] : '2026-07-21',
-                endDate: i.end_time ? i.end_time.split('T')[0] : '2026-10-21',
+                startDate: (i.start_time || i.start_date || i.created_at || '').slice(0, 10),
+                endDate: (i.end_time || i.end_date || '').slice(0, 10) || '—',
                 status: i.status || 'active',
               })))
             } else {

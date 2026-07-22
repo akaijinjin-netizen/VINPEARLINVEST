@@ -1,35 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Pagination from '@/components/Pagination'
-
-const MOCK_INVESTMENTS = [
-  { id: '1', user: '0987654321', userName: 'Nguyễn Văn A', projectName: 'Vingroup QPL Resort & Spa Hạ Long', amount: 50000000, profitEarned: 1200000, dailyRate: 0.8, status: 'active', startTime: '2026-07-15' },
-  { id: '2', user: '0912345678', userName: 'Trần Thị B', projectName: 'Grand World Phú Quốc', amount: 200000000, profitEarned: 6000000, dailyRate: 1.0, status: 'active', startTime: '2026-07-12' },
-  { id: '3', user: '0956789012', userName: 'Phạm Thị D', projectName: 'Vingroup QPL Resort & Golf Nam Hội An', amount: 75000000, profitEarned: 2250000, dailyRate: 0.85, status: 'active', startTime: '2026-07-10' },
-  { id: '4', user: '0967891234', userName: 'Lê Văn C', projectName: 'Vingroup QPL Resort & Spa Nha Trang Bay', amount: 30000000, profitEarned: 1620000, dailyRate: 0.9, status: 'completed', startTime: '2026-06-15' },
-  { id: '5', user: '0941122334', userName: 'Đỗ Văn F', projectName: 'Vingroup QPL Discovery Wonderworld', amount: 50000000, profitEarned: 1050000, dailyRate: 0.7, status: 'active', startTime: '2026-07-14' },
-  { id: '6', user: '0977889900', userName: 'Vũ Thị G', projectName: 'Khu Du Lịch Làng Vân - Đà Nẵng', amount: 100000000, profitEarned: 2850000, dailyRate: 0.95, status: 'active', startTime: '2026-07-11' },
-  { id: '7', user: '0981122334', userName: 'Bùi Văn H', projectName: 'VinWonders Vũ Yên - Hải Phòng', amount: 40000000, profitEarned: 960000, dailyRate: 0.8, status: 'active', startTime: '2026-07-13' },
-  { id: '8', user: '0919988776', userName: 'Đặng Thị K', projectName: 'Vinhomes Pearl Bay Nha Trang', amount: 150000000, profitEarned: 2925000, dailyRate: 0.65, status: 'active', startTime: '2026-07-09' },
-  { id: '9', user: '0933445566', userName: 'Phan Văn L', projectName: 'Vingroup QPL Resort & Spa Hội An', amount: 50000000, profitEarned: 1125000, dailyRate: 0.75, status: 'active', startTime: '2026-07-16' },
-  { id: '10', user: '0966778899', userName: 'Trịnh Thị M', projectName: 'Vingroup QPL Resort & Golf Phú Quốc', amount: 100000000, profitEarned: 2250000, dailyRate: 0.75, status: 'active', startTime: '2026-07-17' },
-  { id: '11', user: '0922334455', userName: 'Dương Văn N', projectName: 'Vingroup QPL Resort & Spa Hạ Long', amount: 50000000, profitEarned: 1600000, dailyRate: 0.8, status: 'active', startTime: '2026-07-08' },
-  { id: '12', user: '0944556677', userName: 'Lý Thị P', projectName: 'Grand World Phú Quốc', amount: 200000000, profitEarned: 8000000, dailyRate: 1.0, status: 'completed', startTime: '2026-06-01' },
-]
+import { createClient } from '@/lib/supabase/client'
 
 const ITEMS_PER_PAGE = 10
 
 export default function AdminInvestmentsPage() {
-  const [investments] = useState(MOCK_INVESTMENTS)
+  const [investments, setInvestments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const filtered = investments.filter(i =>
-    i.userName.toLowerCase().includes(search.toLowerCase()) ||
-    i.user.includes(search) ||
-    i.projectName.toLowerCase().includes(search.toLowerCase())
-  )
+  useEffect(() => {
+    async function fetchInvestments() {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('investments')
+          .select(`
+            *,
+            profiles!investments_user_id_fkey(full_name, phone),
+            projects(name, daily_profit_rate)
+          `)
+          .order('created_at', { ascending: false })
+
+        if (!error && data) {
+          setInvestments(data)
+        }
+      } catch (e) {
+        console.error('Error fetching investments:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchInvestments()
+  }, [])
+
+  const filtered = investments.filter(i => {
+    const name = i.profiles?.full_name || ''
+    const phone = i.profiles?.phone || ''
+    const project = i.projects?.name || ''
+    const q = search.toLowerCase()
+    return name.toLowerCase().includes(q) || phone.includes(q) || project.toLowerCase().includes(q)
+  })
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginatedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
@@ -39,11 +53,38 @@ export default function AdminInvestmentsPage() {
     setCurrentPage(1)
   }
 
+  function formatMoney(n: number) {
+    return (n || 0).toLocaleString('vi-VN') + 'đ'
+  }
+
+  function getStatusLabel(status: string) {
+    switch (status) {
+      case 'active':
+      case 'running':
+      case 'contributing': return 'Đang sinh lãi'
+      case 'ended':
+      case 'finished':
+      case 'completed': return 'Đã hoàn thành'
+      default: return status || 'Không rõ'
+    }
+  }
+
+  function getStatusColors(status: string) {
+    const active = ['active', 'running', 'contributing'].includes(status)
+    return {
+      background: active ? '#ECFDF5' : '#F3F4F6',
+      color: active ? '#059669' : '#6B7280',
+      border: `1px solid ${active ? '#A7F3D0' : '#E5E7EB'}`,
+    }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0F172A' }}>Quản lý lệnh đầu tư</h1>
-        <p style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>Tổng cộng {investments.length} hợp đồng (Phân trang 10 dòng/trang)</p>
+        <p style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+          {loading ? 'Đang tải dữ liệu...' : `Tổng cộng ${investments.length} hợp đồng (Phân trang 10 dòng/trang)`}
+        </p>
       </div>
 
       {/* Search */}
@@ -62,61 +103,70 @@ export default function AdminInvestmentsPage() {
 
       {/* Investments Table */}
       <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>NGƯỜI DÙNG</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>DỰ ÁN</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>SỐ TIỀN ĐẦU TƯ</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>LÃI ĐÃ NHẬN</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>LÃI / NGÀY</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>TRẠNG THÁI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedItems.map((item, i) => (
-              <tr key={item.id} style={{ borderBottom: i < paginatedItems.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
-                <td style={{ padding: '14px 20px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{item.userName}</div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>{item.user}</div>
-                </td>
-                <td style={{ padding: '14px 20px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{item.projectName}</div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>Từ {item.startTime}</div>
-                </td>
-                <td style={{ padding: '14px 20px' }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#C8102E' }}>
-                    {item.amount.toLocaleString('vi-VN')}đ
-                  </div>
-                </td>
-                <td style={{ padding: '14px 20px', fontSize: 14, color: '#10B981', fontWeight: 700 }}>
-                  +{item.profitEarned.toLocaleString('vi-VN')}đ
-                </td>
-                <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: '#374151' }}>
-                  {item.dailyRate}%
-                </td>
-                <td style={{ padding: '14px 20px' }}>
-                  <span style={{
-                    background: item.status === 'active' ? '#ECFDF5' : '#F3F4F6',
-                    color: item.status === 'active' ? '#059669' : '#6B7280',
-                    border: `1px solid ${item.status === 'active' ? '#A7F3D0' : '#E5E7EB'}`,
-                    fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 20
-                  }}>
-                    {item.status === 'active' ? 'Đang sinh lãi' : 'Đã hoàn thành'}
-                  </span>
-                </td>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+            Đang tải dữ liệu từ Supabase...
+          </div>
+        ) : paginatedItems.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+            Chưa có hợp đồng đầu tư nào.
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>NGƯỜI DÙNG</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>DỰ ÁN</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>SỐ TIỀN ĐẦU TƯ</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>LÃI ĐÃ NHẬN</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>LÃI / CHU KỲ</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280' }}>TRẠNG THÁI</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {paginatedItems.map((item: any, i: number) => (
+                <tr key={item.id} style={{ borderBottom: i < paginatedItems.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+                  <td style={{ padding: '14px 20px' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{item.profiles?.full_name || 'Người dùng'}</div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>{item.profiles?.phone || '—'}</div>
+                  </td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{item.projects?.name || item.project_id || '—'}</div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                      Từ {item.start_time ? item.start_time.slice(0, 10) : (item.created_at ? item.created_at.slice(0, 10) : '—')}
+                    </div>
+                  </td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#C8102E' }}>
+                      {formatMoney(item.amount)}
+                    </div>
+                  </td>
+                  <td style={{ padding: '14px 20px', fontSize: 14, color: '#10B981', fontWeight: 700 }}>
+                    +{formatMoney(item.profit_earned || 0)}
+                  </td>
+                  <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: '#374151' }}>
+                    {item.projects?.daily_profit_rate || item.interest_rate || 0}%
+                  </td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <span style={{ ...getStatusColors(item.status), fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
+                      {getStatusLabel(item.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          onPageChange={setCurrentPage}
-        />
+        {!loading && paginatedItems.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   )

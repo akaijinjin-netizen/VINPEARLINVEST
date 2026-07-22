@@ -27,8 +27,23 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
   })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   const handleSave = async () => {
+    setValidationError('')
+    // Validate business rules
+    if (form.investment_cycle_minutes < 15) {
+      setValidationError('⚠️ Chu kỳ đầu tư tối thiểu là 15 phút!')
+      return
+    }
+    if (form.daily_profit_rate < 0.5) {
+      setValidationError('⚠️ Lợi nhuận hàng ngày tối thiểu là 0.5%!')
+      return
+    }
+    if (form.dividend_per_cycle < 10000) {
+      setValidationError('⚠️ Cổ tức mỗi chu kỳ tối thiểu là 10,000 VND!')
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -109,6 +124,17 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
+      {validationError && (
+        <div style={{
+          background: '#FEF2F2', border: '1px solid #FECDD3',
+          borderRadius: 10, padding: '14px 20px', marginBottom: 24,
+          color: '#B91C1C', fontSize: 14, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10
+        }}>
+          {validationError}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
         {/* Main form */}
         <div>
@@ -149,7 +175,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               💰 Thông số đầu tư
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Field label="Lợi nhuận hàng ngày (%)">
+              <Field label="Lợi nhuận hàng ngày (%) — Tối thiểu 0.5%">
                 <div style={{ position: 'relative' }}>
                   <input type="number" step="0.1" min="0" max="100" value={form.daily_profit_rate}
                     onChange={e => setForm(p => ({ ...p, daily_profit_rate: parseFloat(e.target.value) }))}
@@ -157,7 +183,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#C8102E', fontWeight: 700 }}>%</span>
                 </div>
               </Field>
-              <Field label="Chu kỳ đầu tư (phút)">
+              <Field label="Chu kỳ đầu tư (phút) — Tối thiểu 15 phút">
                 <input type="number" value={form.investment_cycle_minutes}
                   onChange={e => setForm(p => ({ ...p, investment_cycle_minutes: parseInt(e.target.value) }))}
                   style={inputStyle} />
@@ -167,7 +193,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
                   onChange={e => setForm(p => ({ ...p, min_investment: parseInt(e.target.value) }))}
                   style={inputStyle} />
               </Field>
-              <Field label="Cổ tức mỗi chu kỳ (VND)">
+              <Field label="Cổ tức mỗi chu kỳ (VND) — Tối thiểu 10,000 VND">
                 <input type="number" value={form.dividend_per_cycle}
                   onChange={e => setForm(p => ({ ...p, dividend_per_cycle: parseInt(e.target.value) }))}
                   style={inputStyle} />
