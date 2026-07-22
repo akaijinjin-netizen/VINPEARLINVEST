@@ -117,27 +117,27 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               📋 Thông tin cơ bản & Pháp lý
             </h3>
             <Field label="Tên dự án *">
-              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={inputStyle} />
+              <input value={form.name} disabled style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <Field label="Mã số dự án tra cứu (MSDA) *">
-                <input value={form.project_code} onChange={e => setForm(p => ({ ...p, project_code: e.target.value }))} style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 700 }} />
+                <input value={form.project_code} disabled style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 700, background: '#F3F4F6', cursor: 'not-allowed' }} />
               </Field>
               <Field label="Văn bản Quyết định pháp lý *">
-                <input value={form.legal_doc} onChange={e => setForm(p => ({ ...p, legal_doc: e.target.value }))} style={inputStyle} />
+                <input value={form.legal_doc} disabled style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
               </Field>
             </div>
 
             <Field label="Địa điểm *">
-              <input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} placeholder="VD: Hạ Long, Quảng Ninh" style={inputStyle} />
+              <input value={form.location} disabled placeholder="VD: Hạ Long, Quảng Ninh" style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
             </Field>
             <Field label="Mô tả dự án">
-              <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea value={form.description} disabled
+                rows={5} style={{ ...inputStyle, resize: 'none', background: '#F3F4F6', cursor: 'not-allowed' }} />
             </Field>
             <Field label="URL ảnh đại diện">
-              <input value={form.image_url} onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
+              <input value={form.image_url} disabled placeholder="https://..." style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
               {form.image_url && (
                 <img src={form.image_url} alt="Preview" style={{ marginTop: 10, width: '100%', height: 160, objectFit: 'cover', borderRadius: 10 }} />
               )}
@@ -187,9 +187,8 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               </Field>
             </div>
             <Field label="Phương pháp chia lợi nhuận">
-              <textarea value={form.profit_method}
-                onChange={e => setForm(p => ({ ...p, profit_method: e.target.value }))}
-                rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea value={form.profit_method} disabled
+                rows={3} style={{ ...inputStyle, resize: 'none', background: '#F3F4F6', cursor: 'not-allowed' }} />
             </Field>
           </div>
         </div>
