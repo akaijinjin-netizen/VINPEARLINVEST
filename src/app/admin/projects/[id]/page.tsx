@@ -1,9 +1,26 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SEED_PROJECTS } from '@/lib/data/projects'
 import { createClient } from '@/lib/supabase/client'
+
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div style={{ marginBottom: 20 }}>
+    <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 8 }}>
+      {label}
+    </label>
+    {children}
+  </div>
+)
+
+const inputStyle = {
+  width: '100%', padding: '10px 14px',
+  border: '1.5px solid #E5E7EB', borderRadius: 10,
+  fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  boxSizing: 'border-box' as const,
+  transition: 'border-color 0.2s',
+}
 
 export default function AdminEditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -14,12 +31,12 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
     location: original.location,
     description: original.description,
     image_url: original.image_url,
-    daily_profit_rate: original.daily_profit_rate,
-    investment_cycle_minutes: original.investment_cycle_minutes,
-    min_investment: original.min_investment,
-    project_scale: original.project_scale,
-    progress_percent: original.progress_percent,
-    dividend_per_cycle: original.dividend_per_cycle,
+    daily_profit_rate: String(original.daily_profit_rate ?? 0.8),
+    investment_cycle_minutes: String(original.investment_cycle_minutes ?? 1440),
+    min_investment: String(original.min_investment ?? 100000),
+    project_scale: String(original.project_scale ?? 0),
+    progress_percent: String(original.progress_percent ?? 50),
+    dividend_per_cycle: String(original.dividend_per_cycle ?? 0),
     profit_method: original.profit_method,
     risk_level: original.risk_level,
     project_code: original.project_code,
@@ -28,6 +45,41 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
   const [validationError, setValidationError] = useState('')
+
+  useEffect(() => {
+    async function loadProjectData() {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (!error && data) {
+          setForm({
+            name: data.name || '',
+            location: data.location || '',
+            description: data.description || '',
+            image_url: data.image_url || '',
+            daily_profit_rate: String(data.daily_profit_rate ?? 0.8),
+            investment_cycle_minutes: String(data.investment_cycle_minutes ?? 1440),
+            min_investment: String(data.min_investment ?? 100000),
+            project_scale: String(data.project_scale ?? 0),
+            progress_percent: String(data.progress_percent ?? 50),
+            dividend_per_cycle: String(data.dividend_per_cycle ?? 0),
+            profit_method: data.profit_method || '',
+            risk_level: data.risk_level || 'Bảo vệ vốn 100%',
+            project_code: data.project_code || '',
+            legal_doc: data.legal_doc || '',
+          })
+        }
+      } catch (err) {
+        console.error('Error loading project details from Supabase:', err)
+      }
+    }
+    loadProjectData()
+  }, [id])
 
   const handleSave = async () => {
     setValidationError('')
@@ -39,12 +91,12 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
         location: form.location,
         description: form.description,
         image_url: form.image_url,
-        daily_profit_rate: form.daily_profit_rate,
-        investment_cycle_minutes: form.investment_cycle_minutes,
-        min_investment: form.min_investment,
-        project_scale: form.project_scale,
-        progress_percent: form.progress_percent,
-        dividend_per_cycle: form.dividend_per_cycle,
+        daily_profit_rate: parseFloat(form.daily_profit_rate) || 0,
+        investment_cycle_minutes: parseInt(form.investment_cycle_minutes) || 0,
+        min_investment: parseInt(form.min_investment) || 0,
+        project_scale: parseInt(form.project_scale) || 0,
+        progress_percent: parseInt(form.progress_percent) || 0,
+        dividend_per_cycle: parseInt(form.dividend_per_cycle) || 0,
         profit_method: form.profit_method,
         risk_level: form.risk_level,
         project_code: form.project_code,
@@ -63,22 +115,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
     }
   }
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 20 }}>
-      <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 8 }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  )
 
-  const inputStyle = {
-    width: '100%', padding: '10px 14px',
-    border: '1.5px solid #E5E7EB', borderRadius: 10,
-    fontSize: 14, fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box' as const,
-    transition: 'border-color 0.2s',
-  }
 
   return (
     <div>
@@ -166,7 +203,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
                 <div style={{ position: 'relative' }}>
                   <input type="number" step="0.1" min="0" max="100" value={form.daily_profit_rate}
                     onFocus={e => e.target.select()}
-                    onChange={e => setForm(p => ({ ...p, daily_profit_rate: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                    onChange={e => setForm(p => ({ ...p, daily_profit_rate: e.target.value }))}
                     style={{ ...inputStyle, paddingRight: 40 }} />
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#C8102E', fontWeight: 700 }}>%</span>
                 </div>
@@ -174,32 +211,32 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               <Field label="Chu kỳ đầu tư (phút)">
                 <input type="number" value={form.investment_cycle_minutes}
                   onFocus={e => e.target.select()}
-                  onChange={e => setForm(p => ({ ...p, investment_cycle_minutes: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, investment_cycle_minutes: e.target.value }))}
                   style={inputStyle} />
               </Field>
               <Field label="Đầu tư tối thiểu (VND)">
                 <input type="number" value={form.min_investment}
                   onFocus={e => e.target.select()}
-                  onChange={e => setForm(p => ({ ...p, min_investment: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, min_investment: e.target.value }))}
                   style={inputStyle} />
               </Field>
               <Field label="Cổ tức mỗi chu kỳ (VND)">
                 <input type="number" value={form.dividend_per_cycle}
                   onFocus={e => e.target.select()}
-                  onChange={e => setForm(p => ({ ...p, dividend_per_cycle: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, dividend_per_cycle: e.target.value }))}
                   style={inputStyle} />
               </Field>
               <Field label="Quy mô dự án (VND)">
                 <input type="number" value={form.project_scale}
                   onFocus={e => e.target.select()}
-                  onChange={e => setForm(p => ({ ...p, project_scale: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, project_scale: e.target.value }))}
                   style={inputStyle} />
               </Field>
               <Field label="Tiến độ gọi vốn (%)">
                 <div style={{ position: 'relative' }}>
                   <input type="number" min="0" max="100" value={form.progress_percent}
                     onFocus={e => e.target.select()}
-                    onChange={e => setForm(p => ({ ...p, progress_percent: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
+                    onChange={e => setForm(p => ({ ...p, progress_percent: e.target.value }))}
                     style={{ ...inputStyle, paddingRight: 40 }} />
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#374151', fontWeight: 700 }}>%</span>
                 </div>
@@ -234,25 +271,33 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
                 <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 10 }}>📍 {form.location || 'Địa điểm'}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#C8102E' }}>{form.daily_profit_rate}%</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#C8102E' }}>{Number(form.daily_profit_rate) || 0}%</div>
                     <div style={{ fontSize: 9, color: '#9CA3AF' }}>LN/ngày</div>
                   </div>
                   <div style={{ borderLeft: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#C8102E' }}>
-                      {form.investment_cycle_minutes >= 1440 ? Math.floor(form.investment_cycle_minutes/1440)+'ng' : Math.floor(form.investment_cycle_minutes/60)+'h'}
+                      {(Number(form.investment_cycle_minutes) || 0) >= 1440 
+                        ? Math.floor((Number(form.investment_cycle_minutes) || 0)/1440)+'ng' 
+                        : (Number(form.investment_cycle_minutes) || 0) >= 60 
+                          ? Math.floor((Number(form.investment_cycle_minutes) || 0)/60)+'h'
+                          : (Number(form.investment_cycle_minutes) || 0)+'m'}
                     </div>
                     <div style={{ fontSize: 9, color: '#9CA3AF' }}>Chu kỳ</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#C8102E' }}>{(form.min_investment/1_000_000).toFixed(0)}tr</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#C8102E' }}>
+                      {((Number(form.min_investment) || 0)/1_000_000) >= 1 
+                        ? ((Number(form.min_investment) || 0)/1_000_000).toFixed(0) + 'tr' 
+                        : (Number(form.min_investment) || 0).toLocaleString('vi-VN')}
+                    </div>
                     <div style={{ fontSize: 9, color: '#9CA3AF' }}>Tối thiểu</div>
                   </div>
                 </div>
                 <div style={{ marginTop: 10 }}>
                   <div style={{ height: 5, background: '#F3F4F6', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: '#C8102E', width: `${form.progress_percent}%`, borderRadius: 3 }} />
+                    <div style={{ height: '100%', background: '#C8102E', width: `${Number(form.progress_percent) || 0}%`, borderRadius: 3 }} />
                   </div>
-                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>Tiến độ: {form.progress_percent}%</div>
+                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>Tiến độ: {Number(form.progress_percent) || 0}%</div>
                 </div>
               </div>
             </div>
