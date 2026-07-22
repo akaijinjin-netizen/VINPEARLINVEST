@@ -176,7 +176,7 @@ export default function AdminDepositsPage() {
       </div>
 
       {/* Filter and Search */}
-      <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => (
             <button key={tab} onClick={() => handleFilterChange(tab)} style={{

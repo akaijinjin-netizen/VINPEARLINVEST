@@ -43,6 +43,7 @@ export default function QuanHeCoDongPage() {
       color: '#1A1A1A',
       width: '100%',
       position: 'relative'
+    }}>
 
       {/* Header (translucent glassmorphic header bar with blur) */}
       <div style={{
