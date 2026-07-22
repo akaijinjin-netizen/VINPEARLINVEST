@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const PUBLIC_PATHS = [
   '/',
@@ -40,6 +41,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       window.location.href = '/dang-nhap'
     } else {
       setAuthorized(true)
+      // Tự động kích hoạt quét trả thưởng đầu tư hết chu kỳ ở chế độ chạy ngầm
+      try {
+        const supabase = createClient()
+        supabase.rpc('process_expired_investments').then(() => {})
+      } catch (e) {
+        console.log('Background payment scan failed:', e)
+      }
     }
   }, [pathname])
 

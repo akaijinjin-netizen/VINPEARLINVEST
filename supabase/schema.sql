@@ -133,3 +133,49 @@ ON CONFLICT (phone) DO NOTHING;
 INSERT INTO public.wallets (user_id, balance, total_deposited, total_withdrawn)
 VALUES ('d3b07384-d113-4c92-bf39-2a996c97a5da', 0, 0, 0)
 ON CONFLICT (user_id) DO NOTHING;
+
+-- =========================================================================
+-- 11. HÀM TỰ ĐỘNG PHÂN PHỐI LÃI VÀ VỐN KHI HẾT CHU KỲ (Tính bằng phút/giờ/ngày)
+-- =========================================================================
+CREATE OR REPLACE FUNCTION public.process_expired_investments()
+RETURNS void AS $$
+DECLARE
+    r RECORD;
+    v_profit NUMERIC;
+    v_total_return NUMERIC;
+BEGIN
+    -- Lặp qua các hợp đồng đầu tư đang hoạt động và đã đến hạn
+    FOR r IN 
+        SELECT 
+            i.id AS investment_id,
+            i.user_id,
+            i.amount,
+            p.daily_profit_rate,
+            p.investment_cycle_minutes
+        FROM public.investments i
+        JOIN public.projects p ON i.project_id = p.id
+        WHERE i.status IN ('active', 'running', 'contributing')
+          AND now() >= (COALESCE(i.start_time, i.created_at, now()) + (COALESCE(p.investment_cycle_minutes, 1440) * interval '1 minute'))
+    LOOP
+        -- Tính toán lợi nhuận: Gốc * (Phần trăm lãi / 100)
+        v_profit := ROUND(r.amount * (r.daily_profit_rate / 100.0));
+        v_total_return := r.amount + v_profit;
+
+        -- 1. Cộng tiền gốc và lãi vào ví người dùng
+        UPDATE public.wallets
+        SET 
+            balance = COALESCE(balance, 0) + v_total_return
+        WHERE user_id = r.user_id;
+
+        -- 2. Cập nhật trạng thái hợp đồng thành đã kết thúc
+        UPDATE public.investments
+        SET 
+            status = 'ended',
+            profit_earned = v_profit,
+            end_time = now()
+        WHERE id = r.investment_id;
+
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
