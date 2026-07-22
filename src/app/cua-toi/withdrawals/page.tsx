@@ -104,7 +104,6 @@ export default function UserWithdrawalsHistoryPage() {
             style={{
               flex: 1,
               padding: '10px 4px',
-              border: 'none',
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 700,
@@ -123,7 +122,6 @@ export default function UserWithdrawalsHistoryPage() {
             style={{
               flex: 1,
               padding: '10px 4px',
-              border: 'none',
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 700,
@@ -144,7 +142,6 @@ export default function UserWithdrawalsHistoryPage() {
             style={{
               flex: 1,
               padding: '10px 4px',
-              border: 'none',
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 700,
