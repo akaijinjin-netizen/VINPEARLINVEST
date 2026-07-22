@@ -46,6 +46,12 @@ export default function AdminUsersPage() {
   const [viewingFinanceUser, setViewingFinanceUser] = useState<User | null>(null)
   const [financeItems, setFinanceItems] = useState<any[]>([])
   const [financeLoading, setFinanceLoading] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3500)
+  }
 
   // Edit user form state
   const [editForm, setEditForm] = useState({
@@ -194,7 +200,7 @@ export default function AdminUsersPage() {
         fetchUsersFromSupabase()
       }, 1500)
     } catch (e: any) {
-      alert('Lỗi khi cập nhật thông tin: ' + e.message)
+      showToast('❌ Lỗi cập nhật thông tin: ' + e.message, 'error')
     }
   }
 
@@ -215,36 +221,58 @@ export default function AdminUsersPage() {
 
   const handleAdjustBalance = async (type: 'add' | 'subtract') => {
     if (!selectedUser || !adjustAmount) return
-    const delta = parseFloat(adjustAmount) * (type === 'subtract' ? -1 : 1)
+    const amt = Math.abs(parseFloat(adjustAmount))
+    const delta = type === 'subtract' ? -amt : amt
     const newBalance = Math.max(0, selectedUser.balance + delta)
 
+    // Update local UI immediately
     setUsers(prev => prev.map(u =>
-      u.id === selectedUser.id ? { ...u, balance: newBalance } : u
+      u.id === selectedUser.id
+        ? {
+            ...u,
+            balance: newBalance,
+            totalDeposited: type === 'add' ? u.totalDeposited + amt : u.totalDeposited,
+            totalWithdrawn: type === 'subtract' ? u.totalWithdrawn + amt : u.totalWithdrawn,
+          }
+        : u
     ))
 
     try {
       const supabase = createClient()
-      const { error: walletErr } = await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', selectedUser.id)
+
+      // Build wallet update: balance + also track total_deposited / total_withdrawn
+      const walletUpdate: any = { balance: newBalance }
+      if (type === 'add') {
+        walletUpdate.total_deposited = selectedUser.totalDeposited + amt
+      } else {
+        walletUpdate.total_withdrawn = selectedUser.totalWithdrawn + amt
+      }
+
+      const { error: walletErr } = await supabase
+        .from('wallets')
+        .update(walletUpdate)
+        .eq('user_id', selectedUser.id)
+
       if (walletErr) {
-        alert('❌ Lỗi cập nhật số dư: ' + walletErr.message)
+        showToast('❌ Lỗi cập nhật số dư: ' + walletErr.message, 'error')
         return
       }
       
       // Save adjustment details to database
       const { error: adjErr } = await supabase.from('balance_adjustments').insert({
         user_id: selectedUser.id,
-        amount: Math.abs(delta),
+        amount: amt,
         type: type,
         reason: adjustReason.trim() || (type === 'add' ? 'Cộng tiền từ hệ thống' : 'Trừ tiền từ hệ thống')
       })
 
       if (adjErr) {
-        alert('⚠️ Lỗi ghi nhận lịch sử RLS: ' + adjErr.message + '\n\n(Lưu ý: Anh cần chạy lệnh SQL "DISABLE ROW LEVEL SECURITY" cho bảng balance_adjustments trên Supabase SQL Editor)')
+        showToast('⚠️ Lưu lý do thất bại! Cần tắt RLS bảng balance_adjustments trên Supabase', 'warning')
       } else {
-        alert(type === 'add' ? '✅ Cộng tiền thành công!' : '✅ Trừ tiền thành công!')
+        showToast(type === 'add' ? '✅ Cộng tiền thành công!' : '✅ Trừ tiền thành công!', 'success')
       }
     } catch (e: any) {
-      alert('❌ Lỗi hệ thống: ' + (e?.message || e))
+      showToast('❌ Lỗi hệ thống: ' + (e?.message || e), 'error')
     }
 
     setSelectedUser(null)
@@ -825,6 +853,43 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* Custom Toast Notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 32, right: 32, zIndex: 9999,
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 20px',
+          borderRadius: 14,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          minWidth: 260, maxWidth: 420,
+          fontWeight: 700, fontSize: 15,
+          animation: 'slideInToast 0.3s ease',
+          background: toast.type === 'success' ? '#ECFDF5'
+                    : toast.type === 'error'   ? '#FEF2F2'
+                    : '#FFFBEB',
+          color:    toast.type === 'success' ? '#065F46'
+                    : toast.type === 'error'   ? '#991B1B'
+                    : '#92400E',
+          border:   `1.5px solid ${toast.type === 'success' ? '#6EE7B7' : toast.type === 'error' ? '#FECACA' : '#FDE68A'}`,
+        }}>
+          <span style={{ fontSize: 22 }}>
+            {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : '⚠️'}
+          </span>
+          <span>{toast.message}</span>
+          <button onClick={() => setToast(null)} style={{
+            marginLeft: 'auto', background: 'none', border: 'none',
+            cursor: 'pointer', fontSize: 18, color: 'inherit', opacity: 0.5, lineHeight: 1
+          }}>✕</button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInToast {
+          from { opacity: 0; transform: translateY(20px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   )
 }
