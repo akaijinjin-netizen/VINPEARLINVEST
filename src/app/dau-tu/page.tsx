@@ -162,7 +162,15 @@ export default function InvestPage() {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#C8102E' }}>
-                      {project.min_investment >= 1_000_000 ? `${(project.min_investment / 1_000_000).toFixed(0)} triệu` : `${(project.min_investment || 0).toLocaleString('vi-VN')}đ`}
+                      {(() => {
+                        const v = project.min_investment || 0
+                        if (v >= 1_000_000_000) {
+                          const ty = v / 1_000_000_000
+                          return `${ty % 1 === 0 ? ty.toFixed(0) : ty.toFixed(1)} tỷ`
+                        }
+                        if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)} triệu`
+                        return `${v.toLocaleString('vi-VN')}đ`
+                      })()}
                     </div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Tối thiểu</div>
                   </div>

@@ -10,6 +10,16 @@ function formatCurrency(n: number) {
   return n.toLocaleString('vi-VN') + ' VND'
 }
 
+function formatMinInvest(n: number) {
+  const v = n || 0
+  if (v >= 1_000_000_000) {
+    const ty = v / 1_000_000_000
+    return `${ty % 1 === 0 ? ty.toFixed(0) : ty.toFixed(1)} tỷ`
+  }
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)} triệu`
+  return `${v.toLocaleString('vi-VN')}đ`
+}
+
 export default function HomePage() {
   const [featuredProjects, setFeaturedProjects] = useState<any[]>(SEED_PROJECTS)
   const [userPhone, setUserPhone] = useState('')
@@ -280,7 +290,7 @@ export default function HomePage() {
                     {project.name}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280' }}>
-                    <span>Đầu tư từ: <strong style={{ color: '#C8102E' }}>{((project.min_investment || 50000000)/1_000_000).toFixed(0)} triệu</strong></span>
+                    <span>Đầu tư từ: <strong style={{ color: '#C8102E' }}>{formatMinInvest(project.min_investment || 50000000)}</strong></span>
                     <span>Tiến độ: <strong style={{ color: '#1A1A1A' }}>{project.progress_percent}%</strong></span>
                   </div>
                 </div>
