@@ -204,7 +204,7 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
 
           {/* Details list */}
           {[
-            { label: 'Phương pháp chia lợi nhuận', value: project.profit_method || 'Phân phối lợi nhuận hàng ngày' },
+            { label: 'Phương pháp chia lợi nhuận', value: project.profit_method || 'Phân phối theo chu kỳ đầu tư' },
             { label: 'Số tiền đầu tư tối thiểu', value: formatCurrencyShort(project.min_investment) },
             { label: 'Quy mô dự án', value: formatCurrency(project.project_scale) },
             { label: 'Lợi nhuận', value: `${project.daily_profit_rate || 0}%` },

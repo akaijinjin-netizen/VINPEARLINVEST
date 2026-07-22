@@ -168,7 +168,6 @@ export default function AdminProjectsPage() {
                 </td>
                 <td style={{ padding: '14px 20px' }}>
                   <div style={{ fontSize: 18, fontWeight: 800, color: '#C8102E' }}>{project.daily_profit_rate}%</div>
-                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>mỗi ngày</div>
                 </td>
                 <td style={{ padding: '14px 20px' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>

@@ -99,7 +99,7 @@ export default function IncomePage() {
                     {item.projectName}
                   </div>
                   <div style={{ fontSize: 12, color: '#9CA3AF' }}>
-                    Lợi nhuận hàng ngày ({item.rate})
+                    Lợi nhuận ({item.rate})
                   </div>
                   <div style={{ fontSize: 11, color: '#D1D5DB', marginTop: 2 }}>{item.time}</div>
                 </div>

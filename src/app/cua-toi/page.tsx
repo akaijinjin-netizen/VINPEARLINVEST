@@ -13,7 +13,7 @@ const MOCK_NOTIFICATIONS = [
 ]
 
 const MOCK_EVENTS = [
-  { id: 1, title: '🔥 Tham gia góp vốn nhận ưu đãi khủng', content: 'Nhận ngay mức hoa hồng lợi nhuận ngày hấp dẫn lên tới 3.89%/ngày khi tham gia các dự án năng lượng và đô thị tương lai mới ra mắt.', time: '22/07/2026 - 31/07/2026' },
+  { id: 1, title: '🔥 Tham gia góp vốn nhận ưu đãi khủng', content: 'Nhận ngay mức hoa hồng lợi nhuận hấp dẫn lên tới 3.89% khi tham gia các dự án năng lượng và đô thị tương lai mới ra mắt.', time: '22/07/2026 - 31/07/2026' },
   { id: 2, title: '🎁 Mời bạn bè đăng ký tài khoản', content: 'Mỗi lượt giới thiệu thành công bạn bè tham gia đầu tư, bạn sẽ nhận được phần thưởng hoa hồng trực tiếp cộng thẳng vào số dư ví của mình.', time: 'Dài hạn' },
   { id: 3, title: '💎 Chương trình Đại hội Cổ Đông thường niên', content: 'Vingroup công bố lộ trình báo cáo tài chính năm và triển khai các dự án quy mô lớn. Chi tiết cập nhật tại mục tài liệu cổ đông.', time: 'Sắp diễn ra' }
 ]

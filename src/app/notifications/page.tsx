@@ -25,7 +25,7 @@ const MOCK_USER_NOTIFS: UserNotif[] = [
   {
     id: '2',
     type: 'profit',
-    title: '💰 Nhận lợi nhuận hàng ngày',
+    title: '💰 Nhận lợi nhuận',
     content: 'Bạn vừa nhận được +400,000 VND lợi nhuận cổ tức từ dự án Vingroup QPL Resort & Spa Hạ Long.',
     time: '2026-07-21 09:00',
     unread: true,

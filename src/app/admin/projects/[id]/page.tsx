@@ -272,7 +272,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#C8102E' }}>{Number(form.daily_profit_rate) || 0}%</div>
-                    <div style={{ fontSize: 9, color: '#9CA3AF' }}>LN/ngày</div>
+                    <div style={{ fontSize: 9, color: '#9CA3AF' }}>Lợi nhuận</div>
                   </div>
                   <div style={{ borderLeft: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#C8102E' }}>

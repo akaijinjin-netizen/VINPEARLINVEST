@@ -264,7 +264,7 @@ export default function HomePage() {
                     fontSize: 11, fontWeight: 800,
                     padding: '3px 8px', borderRadius: 12
                   }}>
-                    {project.daily_profit_rate}%/ngày
+                    {project.daily_profit_rate}%
                   </div>
                   <div style={{
                     position: 'absolute', bottom: 10, left: 10,

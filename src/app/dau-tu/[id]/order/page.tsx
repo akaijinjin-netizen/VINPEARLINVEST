@@ -264,7 +264,7 @@ export default function InvestmentOrderPage({ params }: { params: Promise<{ id: 
               marginTop: 16, border: '1px solid #FECDD3'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
-                <span style={{ color: '#6B7280' }}>Lãi nhận mỗi ngày:</span>
+                <span style={{ color: '#6B7280' }}>Lãi nhận dự kiến:</span>
                 <span style={{ fontWeight: 800, color: '#C8102E' }}>
                   +{formatCurrency(estimatedProfit)}
                 </span>
