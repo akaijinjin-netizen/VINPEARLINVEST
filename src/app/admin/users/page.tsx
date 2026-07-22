@@ -41,7 +41,11 @@ export default function AdminUsersPage() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   const [adjustAmount, setAdjustAmount] = useState('')
+  const [adjustReason, setAdjustReason] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [viewingFinanceUser, setViewingFinanceUser] = useState<User | null>(null)
+  const [financeItems, setFinanceItems] = useState<any[]>([])
+  const [financeLoading, setFinanceLoading] = useState(false)
 
   // Edit user form state
   const [editForm, setEditForm] = useState({
@@ -221,17 +225,146 @@ export default function AdminUsersPage() {
     try {
       const supabase = createClient()
       await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', selectedUser.id)
+      
+      // Save adjustment details to database
+      await supabase.from('balance_adjustments').insert({
+        user_id: selectedUser.id,
+        amount: Math.abs(delta),
+        type: type,
+        reason: adjustReason.trim() || (type === 'add' ? 'Cộng tiền từ hệ thống' : 'Trừ tiền từ hệ thống')
+      })
     } catch (e) {
       console.log('Local wallet update:', e)
     }
 
     setSelectedUser(null)
     setAdjustAmount('')
+    setAdjustReason('')
   }
 
   const handleSearchChange = (val: string) => {
     setSearch(val)
     setCurrentPage(1)
+  }
+
+  const handleOpenFinanceModal = async (user: User) => {
+    setViewingFinanceUser(user)
+    setFinanceLoading(true)
+    setFinanceItems([])
+
+    try {
+      const supabase = createClient()
+      const uid = user.id
+      const txList: any[] = []
+
+      // 1. Nạp tiền
+      const { data: deposits } = await supabase
+        .from('deposits')
+        .select('id, amount, created_at, status')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+      deposits?.forEach(d => {
+        txList.push({
+          id: 'dep_' + d.id,
+          type: 'deposit',
+          label: 'Nạp tiền vào quỹ',
+          desc: d.status === 'approved' ? '✓ Xác nhận thành công' : d.status === 'rejected' ? '✗ Bị từ chối' : '⏳ Đang xử lý',
+          amount: d.status === 'approved' ? +d.amount : 0,
+          date: d.created_at,
+          status: d.status,
+        })
+      })
+
+      // 2. Rút tiền
+      const { data: withdrawals } = await supabase
+        .from('withdrawals')
+        .select('id, amount, created_at, status')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+      withdrawals?.forEach(w => {
+        txList.push({
+          id: 'wd_' + w.id,
+          type: 'withdraw',
+          label: 'Rút tiền về ngân hàng',
+          desc: w.status === 'approved' ? '✓ Đã chuyển khoản' : w.status === 'rejected' ? '✗ Bị từ chối' : '⏳ Đang xử lý',
+          amount: w.status === 'rejected' ? 0 : -Math.abs(+w.amount),
+          date: w.created_at,
+          status: w.status,
+        })
+      })
+
+      // 3. Đầu tư (trừ tiền) + hoàn gốc + lợi nhuận đầu tư
+      const { data: investments } = await supabase
+        .from('investments')
+        .select('id, amount, profit_earned, status, created_at, start_time, end_time, projects(name)')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+      investments?.forEach(inv => {
+        const projName = (inv.projects as any)?.name || 'Dự án'
+        // Trừ tiền khi đầu tư
+        txList.push({
+          id: 'inv_out_' + inv.id,
+          type: 'invest',
+          label: `Đầu tư: ${projName}`,
+          desc: `Bắt đầu: ${inv.start_time ? inv.start_time.slice(0, 16).replace('T', ' ') : inv.created_at.slice(0, 16).replace('T', ' ')}`,
+          amount: -Math.abs(+inv.amount),
+          date: inv.start_time || inv.created_at,
+        })
+        // Nhận lại gốc + lãi khi kết thúc
+        if (inv.status === 'ended' && inv.end_time) {
+          txList.push({
+            id: 'inv_in_' + inv.id,
+            type: 'profit',
+            label: `Nhận vốn + lãi: ${projName}`,
+            desc: `Gốc +${(+inv.amount).toLocaleString('vi-VN')}đ | Lãi +${(+inv.profit_earned).toLocaleString('vi-VN')}đ`,
+            amount: +(inv.amount) + +(inv.profit_earned),
+            date: inv.end_time,
+          })
+        }
+      })
+
+      // 4. Lãi 0.5% qua đêm
+      const { data: overnightLogs } = await supabase
+        .from('overnight_interest_logs')
+        .select('id, interest_amount, wallet_balance_before, created_at')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+      overnightLogs?.forEach(log => {
+        txList.push({
+          id: 'oi_' + log.id,
+          type: 'overnight',
+          label: 'Lợi nhuận 0.5% qua đêm',
+          desc: `Số dư trước: ${(+log.wallet_balance_before).toLocaleString('vi-VN')}đ`,
+          amount: +log.interest_amount,
+          date: log.created_at,
+        })
+      })
+
+      // 5. Điều chỉnh số dư từ Admin
+      const { data: adjustments } = await supabase
+        .from('balance_adjustments')
+        .select('id, amount, type, reason, created_at')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+      adjustments?.forEach(adj => {
+        txList.push({
+          id: 'adj_' + adj.id,
+          type: adj.type === 'subtract' ? 'withdraw' : 'deposit',
+          label: adj.reason || (adj.type === 'subtract' ? 'Trừ tiền tài khoản' : 'Cộng tiền tài khoản'),
+          desc: 'Hệ thống điều chỉnh',
+          amount: adj.type === 'subtract' ? -Math.abs(+adj.amount) : +adj.amount,
+          date: adj.created_at,
+        })
+      })
+
+      // Sắp xếp mới nhất lên đầu
+      txList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setFinanceItems(txList)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setFinanceLoading(false)
+    }
   }
 
   return (
@@ -344,6 +477,12 @@ export default function AdminUsersPage() {
                       borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
                     }}>
                       🗑️ Xóa
+                    </button>
+                    <button onClick={() => handleOpenFinanceModal(user)} style={{
+                      background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0',
+                      borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                    }}>
+                      📊 Tài chính
                     </button>
                   </div>
                 </td>
@@ -525,21 +664,37 @@ export default function AdminUsersPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
         }}>
           <div style={{ background: 'white', borderRadius: 16, padding: '24px', width: 400 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Điều chỉnh số dư trên Supabase</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Điều chỉnh số dư tài khoản</h3>
             <p style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>
               Tài khoản: <strong>{selectedUser.fullName} ({selectedUser.phone})</strong><br />
               Số dư hiện tại: <strong style={{ color: '#C8102E' }}>{selectedUser.balance.toLocaleString('vi-VN')} VND</strong>
             </p>
-            <input
-              type="number"
-              value={adjustAmount}
-              onChange={e => setAdjustAmount(e.target.value)}
-              placeholder="Nhập số tiền muốn cộng/trừ"
-              style={{
-                width: '100%', padding: '12px', border: '1.5px solid #E5E7EB',
-                borderRadius: 10, fontSize: 16, marginBottom: 20, boxSizing: 'border-box'
-              }}
-            />
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Số tiền muốn cộng/trừ *</label>
+              <input
+                type="number"
+                value={adjustAmount}
+                onChange={e => setAdjustAmount(e.target.value)}
+                placeholder="Nhập số tiền..."
+                style={{
+                  width: '100%', padding: '12px', border: '1.5px solid #E5E7EB',
+                  borderRadius: 10, fontSize: 16, boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Lý do (Ví dụ: Tri ân khách hàng, cộng hoàn tiền...)</label>
+              <input
+                type="text"
+                value={adjustReason}
+                onChange={e => setAdjustReason(e.target.value)}
+                placeholder="Nhập lý do điều chỉnh..."
+                style={{
+                  width: '100%', padding: '12px', border: '1.5px solid #E5E7EB',
+                  borderRadius: 10, fontSize: 14, boxSizing: 'border-box'
+                }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => handleAdjustBalance('add')} style={{
                 flex: 1, background: '#10B981', color: 'white', border: 'none',
@@ -554,7 +709,7 @@ export default function AdminUsersPage() {
                 - Trừ tiền
               </button>
             </div>
-            <button onClick={() => setSelectedUser(null)} style={{
+            <button onClick={() => { setSelectedUser(null); setAdjustAmount(''); setAdjustReason(''); }} style={{
               width: '100%', background: '#F3F4F6', color: '#374151', border: 'none',
               borderRadius: 10, padding: '10px', marginTop: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer'
             }}>
@@ -591,6 +746,72 @@ export default function AdminUsersPage() {
                 Xóa vĩnh viễn
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Finance Details Modal for Admin View */}
+      {viewingFinanceUser && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+        }}>
+          <div style={{
+            background: 'white', borderRadius: 20, padding: '24px',
+            width: 550, maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Lịch sử tài chính chi tiết</h3>
+              <button
+                onClick={() => setViewingFinanceUser(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9CA3AF' }}
+              >✕</button>
+            </div>
+            
+            <p style={{ fontSize: 14, color: '#4B5563', margin: '0 0 16px', lineHeight: 1.5 }}>
+              Khách hàng: <strong>{viewingFinanceUser.fullName}</strong> ({viewingFinanceUser.phone})<br />
+              Số dư hiện tại: <strong style={{ color: '#C8102E' }}>{viewingFinanceUser.balance.toLocaleString('vi-VN')} đ</strong>
+            </p>
+
+            <div style={{ flex: 1, overflowY: 'auto', background: '#F8FAFC', borderRadius: 12, padding: '12px', border: '1px solid #E2E8F0' }}>
+              {financeLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF' }}>Đang tải lịch sử...</div>
+              ) : financeItems.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF' }}>Chưa phát sinh giao dịch nào.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {financeItems.map((item) => {
+                    const isPositive = item.amount > 0
+                    const isZero = item.amount === 0
+                    return (
+                      <div key={item.id} style={{
+                        background: 'white', borderRadius: 10, padding: '12px 16px',
+                        border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{item.label}</div>
+                          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{item.desc}</div>
+                          <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 2 }}>{new Date(item.date).toLocaleString('vi-VN')}</div>
+                        </div>
+                        <div style={{
+                          fontSize: 15, fontWeight: 800,
+                          color: isZero ? '#94A3B8' : (isPositive ? '#10B981' : '#EF4444')
+                        }}>
+                          {isZero ? '0đ' : (isPositive ? '+' : '') + item.amount.toLocaleString('vi-VN')}đ
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => setViewingFinanceUser(null)} style={{
+              width: '100%', background: '#F3F4F6', color: '#374151', border: 'none',
+              borderRadius: 10, padding: '12px', marginTop: 16, fontSize: 14, fontWeight: 700, cursor: 'pointer'
+            }}>
+              Đóng cửa sổ
+            </button>
           </div>
         </div>
       )}

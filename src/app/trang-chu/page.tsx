@@ -83,13 +83,13 @@ export default function HomePage() {
             // Investment cycle profits ended today
             const { data: endedInvestments } = await supabase
               .from('investments')
-              .select('profit_earned, end_time, end_date')
+              .select('profit_earned, end_time')
               .eq('user_id', profile.id)
               .eq('status', 'ended')
 
             const todayStr = new Date().toDateString()
             const totalInvestmentProfit = endedInvestments?.filter(inv => {
-              const dStr = inv.end_time || inv.end_date
+              const dStr = inv.end_time
               return dStr && new Date(dStr).toDateString() === todayStr
             }).reduce((sum, inv) => sum + (Number(inv.profit_earned) || 0), 0) || 0
 

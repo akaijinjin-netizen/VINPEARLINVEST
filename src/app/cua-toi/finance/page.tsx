@@ -72,8 +72,8 @@ export default function FinanceDetailPage() {
             id: 'dep_' + d.id,
             type: 'deposit',
             label: 'Nạp tiền vào quỹ',
-            desc: d.status === 'approved' ? '✓ Xác nhận thành công' : '⏳ Đang xử lý',
-            amount: +d.amount,
+            desc: d.status === 'approved' ? '✓ Xác nhận thành công' : d.status === 'rejected' ? '✗ Bị từ chối' : '⏳ Đang xử lý',
+            amount: d.status === 'approved' ? +d.amount : 0,
             date: d.created_at,
             status: d.status,
           })
@@ -91,7 +91,7 @@ export default function FinanceDetailPage() {
             type: 'withdraw',
             label: 'Rút tiền về ngân hàng',
             desc: w.status === 'approved' ? '✓ Đã chuyển khoản' : w.status === 'rejected' ? '✗ Bị từ chối' : '⏳ Đang xử lý',
-            amount: -Math.abs(+w.amount),
+            amount: w.status === 'rejected' ? 0 : -Math.abs(+w.amount),
             date: w.created_at,
             status: w.status,
           })
@@ -141,6 +141,23 @@ export default function FinanceDetailPage() {
             desc: `Số dư trước: ${formatCurrency(+log.wallet_balance_before)}`,
             amount: +log.interest_amount,
             date: log.created_at,
+          })
+        })
+
+        // 5. Điều chỉnh số dư từ Admin
+        const { data: adjustments } = await supabase
+          .from('balance_adjustments')
+          .select('id, amount, type, reason, created_at')
+          .eq('user_id', uid)
+          .order('created_at', { ascending: false })
+        adjustments?.forEach(adj => {
+          txList.push({
+            id: 'adj_' + adj.id,
+            type: adj.type === 'subtract' ? 'withdraw' : 'deposit',
+            label: adj.reason || (adj.type === 'subtract' ? 'Trừ tiền tài khoản' : 'Cộng tiền tài khoản'),
+            desc: 'Hệ thống điều chỉnh',
+            amount: adj.type === 'subtract' ? -Math.abs(+adj.amount) : +adj.amount,
+            date: adj.created_at,
           })
         })
 
