@@ -15,6 +15,9 @@ export default function UserInvestmentsPage() {
         const supabase = createClient()
         const userPhone = localStorage.getItem('userPhone')
         if (userPhone) {
+          // Tự động kiểm tra và trả lãi cho các gói đầu tư hết chu kỳ khi vào danh sách
+          await supabase.rpc('process_expired_investments')
+
           const { data: profile } = await supabase.from('profiles').select('id').eq('phone', userPhone).single()
           if (profile) {
             const { data } = await supabase

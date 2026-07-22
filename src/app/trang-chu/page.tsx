@@ -38,6 +38,9 @@ export default function HomePage() {
 
         // 2. Fetch profile & wallet cleanly by phone number
         if (phone) {
+          // Tự động kiểm tra và trả lãi cho các gói đầu tư hết chu kỳ khi vào trang chủ
+          await supabase.rpc('process_expired_investments')
+
           const { data: profile } = await supabase
             .from('profiles')
             .select('id, phone, full_name')
