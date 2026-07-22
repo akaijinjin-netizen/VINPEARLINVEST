@@ -120,7 +120,7 @@ export default function InvestPage() {
                 {/* Status badge */}
                 <div style={{
                   position: 'absolute', top: 12, right: 12,
-                  background: '#10B981',
+                  background: project.status === 'paused' || project.status === 'ended' ? '#F59E0B' : '#10B981',
                   color: 'white', fontSize: 11, fontWeight: 700,
                   padding: '4px 10px', borderRadius: 20,
                   display: 'flex', alignItems: 'center', gap: 4
@@ -130,7 +130,7 @@ export default function InvestPage() {
                     background: 'white',
                     display: 'inline-block'
                   }} />
-                  Đang mở
+                  {project.status === 'paused' || project.status === 'ended' ? 'Tạm dừng' : 'Đang mở'}
                 </div>
               </div>
 
@@ -162,7 +162,7 @@ export default function InvestPage() {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#C8102E' }}>
-                      {formatCurrency(project.min_investment)}
+                      {project.min_investment >= 1_000_000 ? `${(project.min_investment / 1_000_000).toFixed(0)} triệu` : `${(project.min_investment || 0).toLocaleString('vi-VN')}đ`}
                     </div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Tối thiểu</div>
                   </div>
@@ -196,19 +196,21 @@ export default function InvestPage() {
                 {/* CTA Button */}
                 <button style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #C8102E 0%, #A00D25 100%)',
+                  background: project.status === 'paused' || project.status === 'ended'
+                    ? '#9CA3AF'
+                    : 'linear-gradient(135deg, #C8102E 0%, #A00D25 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: 10,
                   padding: '12px',
                   fontSize: 15,
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: project.status === 'paused' || project.status === 'ended' ? 'not-allowed' : 'pointer',
                   marginTop: 14,
-                  boxShadow: '0 4px 12px rgba(200,16,46,0.25)',
+                  boxShadow: project.status === 'paused' || project.status === 'ended' ? 'none' : '0 4px 12px rgba(200,16,46,0.25)',
                   transition: 'all 0.2s ease'
                 }}>
-                  Đầu tư ngay →
+                  {project.status === 'paused' || project.status === 'ended' ? '⏸ Tạm dừng gọi vốn' : 'Đầu tư ngay →'}
                 </button>
               </div>
             </div>

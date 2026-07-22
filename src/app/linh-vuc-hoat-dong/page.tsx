@@ -73,11 +73,6 @@ const TABS = [
         name: 'Vinpearl',
         desc: 'Tự hào là thương hiệu dẫn đầu, đại diện cho ngành khách sạn du lịch nghỉ dưỡng tại Việt Nam, Vinpearl mang trong mình sứ mệnh nâng tầm trải nghiệm nghỉ dưỡng, mang đến những kỳ nghỉ 5 sao cho du khách Việt Nam và du khách quốc tế. Các cơ sở khách sạn, biệt thự nghỉ dưỡng, các khu vui chơi giải trí của Vinpearl trải dài trên mảnh đất hơn 3000 km đường bờ biển. Mỗi lựa chọn điểm đến tại Vinpearl sẽ là một điểm dừng chân lý tưởng để nhận trọn vẹn vẻ đẹp của từng thắng cảnh địa phương.',
         image: '/commerce_brand2.webp'
-      },
-      {
-        name: 'Vincom',
-        desc: 'Vincom là thương hiệu bất động sản bán lẻ hàng đầu Việt Nam với 4 dòng sản phẩm là Vincom Center, Vincom Mega Mall, Vincom Plaza và Vincom+.\n\nVới độ phủ trên toàn quốc, các loại hình mua sắm, ẩm thực và vui chơi giải trí đa dạng, Vincom có vai trò dẫn dắt xu hướng tiêu dùng, khẳng định uy tín của một nhà đầu tư, quản lý bất động sản thương mại chuyên nghiệp.\n\nTừ ngày khai trương TTTM đầu tiên năm 2004, đến nay, Vincom Retail đang là chủ sở hữu mặt bằng TTTM lớn nhất Việt Nam.',
-        image: '/commerce_brand3.webp'
       }
     ]
   },

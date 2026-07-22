@@ -1,30 +1,87 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SEED_PROJECTS } from '@/lib/data/projects'
 import Pagination from '@/components/Pagination'
+import { createClient } from '@/lib/supabase/client'
 
 const ITEMS_PER_PAGE = 10
 
 export default function AdminProjectsPage() {
-  const [projects, setProjects] = useState(SEED_PROJECTS)
+  const [projects, setProjects] = useState<any[]>(SEED_PROJECTS)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadProjectsFromSupabase() {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (!error && data && data.length > 0) {
+          const mapped = data.map(p => ({
+            id: p.id,
+            project_code: p.project_code || p.code || 'MSDA-2026',
+            legal_doc: p.legal_doc || p.legal || 'Quyết định pháp lý số 01/QĐ-VINGROUP',
+            name: p.name || p.title || 'Dự án đầu tư Vingroup QPL',
+            location: p.location || 'Hà Nội',
+            description: p.description || '',
+            daily_profit_rate: p.daily_profit_rate ?? p.interest_rate ?? 0.8,
+            min_investment: p.min_investment ?? 100000,
+            progress_percent: p.progress_percent ?? 50,
+            status: p.status || 'active',
+            image_url: p.image_url || '/project_vinschool.webp'
+          }))
+          setProjects(mapped)
+        }
+      } catch (err) {
+        console.log('Fallback to seed projects:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProjectsFromSupabase()
+  }, [])
 
   const filtered = projects.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.location.toLowerCase().includes(search.toLowerCase()) ||
-    p.project_code.toLowerCase().includes(search.toLowerCase())
+    (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.location || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.project_code || '').toLowerCase().includes(search.toLowerCase())
   )
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginatedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
-  const toggleStatus = (id: string) => {
+  const toggleStatus = async (id: string) => {
+    const current = projects.find(p => p.id === id)
+    if (!current) return
+    const newStatus = current.status === 'active' ? 'paused' : 'active'
+
+    // Update local state immediately for instant feedback
     setProjects(prev => prev.map(p =>
-      p.id === id ? { ...p, status: p.status === 'active' ? 'paused' : 'active' } : p
+      p.id === id ? { ...p, status: newStatus } : p
     ))
+
+    // Persist permanently in Supabase
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Failed to update project status in Supabase:', error.message)
+      }
+    } catch (e) {
+      console.error('Error updating project status:', e)
+    }
   }
 
   const handleSearchChange = (val: string) => {
@@ -38,7 +95,9 @@ export default function AdminProjectsPage() {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0F172A' }}>Dự án đầu tư & Pháp lý</h1>
-          <p style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>Tổng số {projects.length} dự án (Phân trang 10 dòng/trang)</p>
+          <p style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+            {loading ? 'Đang tải danh sách...' : `Tổng số ${projects.length} dự án (Phân trang 10 dòng/trang)`}
+          </p>
         </div>
         <Link href="/admin/projects/new" style={{ textDecoration: 'none' }}>
           <button style={{
@@ -113,7 +172,7 @@ export default function AdminProjectsPage() {
                 </td>
                 <td style={{ padding: '14px 20px' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
-                    {(project.min_investment / 1_000_000).toFixed(0)}tr VND
+                    {project.min_investment >= 1_000_000 ? `${(project.min_investment / 1_000_000).toFixed(0)}tr VND` : `${(project.min_investment || 0).toLocaleString('vi-VN')} VND`}
                   </div>
                 </td>
                 <td style={{ padding: '14px 20px', minWidth: 120 }}>
@@ -143,23 +202,48 @@ export default function AdminProjectsPage() {
                 </td>
                 <td style={{ padding: '14px 20px' }}>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href={`/admin/projects/${project.id}`} style={{ textDecoration: 'none' }}>
+                    <Link href={`/admin/projects/${project.id}`}>
                       <button style={{
-                        background: '#EFF6FF', color: '#3B82F6',
+                        background: '#EFF6FF', color: '#2563EB',
                         border: '1px solid #BFDBFE', borderRadius: 8,
-                        padding: '6px 12px', fontSize: 13, fontWeight: 600,
-                        cursor: 'pointer'
-                      }}>✏️ Sửa</button>
+                        padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                      }}>
+                        ✏️ Sửa
+                      </button>
                     </Link>
-                    <button onClick={() => toggleStatus(project.id)} style={{
-                      background: project.status === 'active' ? '#FEF3C7' : '#ECFDF5',
-                      color: project.status === 'active' ? '#D97706' : '#059669',
-                      border: `1px solid ${project.status === 'active' ? '#FDE68A' : '#A7F3D0'}`,
-                      borderRadius: 8,
-                      padding: '6px 12px', fontSize: 13, fontWeight: 600,
-                      cursor: 'pointer'
-                    }}>
-                      {project.status === 'active' ? '⏸' : '▶'}
+                    <button
+                      onClick={() => toggleStatus(project.id)}
+                      style={{
+                        background: project.status === 'active' ? '#FFFBEB' : '#ECFDF5',
+                        color: project.status === 'active' ? '#D97706' : '#059669',
+                        border: `1px solid ${project.status === 'active' ? '#FDE68A' : '#A7F3D0'}`,
+                        borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {project.status === 'active' ? '⏸ Tạm dừng' : '▶ Kích hoạt'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}"?`)) {
+                          setProjects(prev => prev.filter(p => p.id !== project.id))
+                          try {
+                            const supabase = createClient()
+                            await supabase.from('projects').delete().eq('id', project.id)
+                          } catch (e) {
+                            console.error('Error deleting project:', e)
+                          }
+                        }
+                      }}
+                      style={{
+                        background: '#FEF2F2', color: '#DC2626',
+                        border: '1px solid #FECACA', borderRadius: 8,
+                        padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🗑️ Xóa
                     </button>
                   </div>
                 </td>
@@ -168,13 +252,15 @@ export default function AdminProjectsPage() {
           </tbody>
         </table>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          onPageChange={setCurrentPage}
-        />
+        {filtered.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   )

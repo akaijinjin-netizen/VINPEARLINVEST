@@ -31,19 +31,6 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
 
   const handleSave = async () => {
     setValidationError('')
-    // Validate business rules
-    if (form.investment_cycle_minutes < 15) {
-      setValidationError('⚠️ Chu kỳ đầu tư tối thiểu là 15 phút!')
-      return
-    }
-    if (form.daily_profit_rate < 0.5) {
-      setValidationError('⚠️ Lợi nhuận hàng ngày tối thiểu là 0.5%!')
-      return
-    }
-    if (form.dividend_per_cycle < 10000) {
-      setValidationError('⚠️ Cổ tức mỗi chu kỳ tối thiểu là 10,000 VND!')
-      return
-    }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -107,7 +94,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
           Quay lại
         </Link>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A' }}>Chỉnh sửa dự án trên Supabase</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A' }}>Chỉnh sửa dự án</h1>
           <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 2 }}>{original.name}</p>
         </div>
       </div>
@@ -120,7 +107,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
           display: 'flex', alignItems: 'center', gap: 10
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Đã lưu thành công! Dữ liệu đã được cập nhật trực tiếp lên Supabase.
+          Đã lưu dự án thành công! Dữ liệu đã được cập nhật.
         </div>
       )}
 
@@ -143,27 +130,27 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               📋 Thông tin cơ bản & Pháp lý
             </h3>
             <Field label="Tên dự án *">
-              <input value={form.name} disabled style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
+              <input value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={inputStyle} />
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <Field label="Mã số dự án tra cứu (MSDA) *">
-                <input value={form.project_code} disabled style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 700, background: '#F3F4F6', cursor: 'not-allowed' }} />
+                <input value={form.project_code || ''} onChange={e => setForm(p => ({ ...p, project_code: e.target.value }))} style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 700 }} />
               </Field>
               <Field label="Văn bản Quyết định pháp lý *">
-                <input value={form.legal_doc} disabled style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
+                <input value={form.legal_doc || ''} onChange={e => setForm(p => ({ ...p, legal_doc: e.target.value }))} style={inputStyle} />
               </Field>
             </div>
 
             <Field label="Địa điểm *">
-              <input value={form.location} disabled placeholder="VD: Hạ Long, Quảng Ninh" style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
+              <input value={form.location || ''} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} placeholder="VD: Hạ Long, Quảng Ninh" style={inputStyle} />
             </Field>
             <Field label="Mô tả dự án">
-              <textarea value={form.description} disabled
-                rows={5} style={{ ...inputStyle, resize: 'none', background: '#F3F4F6', cursor: 'not-allowed' }} />
+              <textarea value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                rows={5} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Nhập mô tả chi tiết về dự án..." />
             </Field>
             <Field label="URL ảnh đại diện">
-              <input value={form.image_url} disabled placeholder="https://..." style={{ ...inputStyle, background: '#F3F4F6', cursor: 'not-allowed' }} />
+              <input value={form.image_url || ''} onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
               {form.image_url && (
                 <img src={form.image_url} alt="Preview" style={{ marginTop: 10, width: '100%', height: 160, objectFit: 'cover', borderRadius: 10 }} />
               )}
@@ -175,46 +162,57 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               💰 Thông số đầu tư
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Field label="Lợi nhuận hàng ngày (%) — Tối thiểu 0.5%">
+              <Field label="Lợi nhuận hàng ngày (%)">
                 <div style={{ position: 'relative' }}>
                   <input type="number" step="0.1" min="0" max="100" value={form.daily_profit_rate}
-                    onChange={e => setForm(p => ({ ...p, daily_profit_rate: parseFloat(e.target.value) }))}
+                    onFocus={e => e.target.select()}
+                    onChange={e => setForm(p => ({ ...p, daily_profit_rate: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                     style={{ ...inputStyle, paddingRight: 40 }} />
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#C8102E', fontWeight: 700 }}>%</span>
                 </div>
               </Field>
-              <Field label="Chu kỳ đầu tư (phút) — Tối thiểu 15 phút">
+              <Field label="Chu kỳ đầu tư (phút)">
                 <input type="number" value={form.investment_cycle_minutes}
-                  onChange={e => setForm(p => ({ ...p, investment_cycle_minutes: parseInt(e.target.value) }))}
+                  onFocus={e => e.target.select()}
+                  onChange={e => setForm(p => ({ ...p, investment_cycle_minutes: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
                   style={inputStyle} />
               </Field>
               <Field label="Đầu tư tối thiểu (VND)">
                 <input type="number" value={form.min_investment}
-                  onChange={e => setForm(p => ({ ...p, min_investment: parseInt(e.target.value) }))}
+                  onFocus={e => e.target.select()}
+                  onChange={e => setForm(p => ({ ...p, min_investment: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
                   style={inputStyle} />
               </Field>
-              <Field label="Cổ tức mỗi chu kỳ (VND) — Tối thiểu 10,000 VND">
+              <Field label="Cổ tức mỗi chu kỳ (VND)">
                 <input type="number" value={form.dividend_per_cycle}
-                  onChange={e => setForm(p => ({ ...p, dividend_per_cycle: parseInt(e.target.value) }))}
+                  onFocus={e => e.target.select()}
+                  onChange={e => setForm(p => ({ ...p, dividend_per_cycle: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
                   style={inputStyle} />
               </Field>
               <Field label="Quy mô dự án (VND)">
                 <input type="number" value={form.project_scale}
-                  onChange={e => setForm(p => ({ ...p, project_scale: parseInt(e.target.value) }))}
+                  onFocus={e => e.target.select()}
+                  onChange={e => setForm(p => ({ ...p, project_scale: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
                   style={inputStyle} />
               </Field>
               <Field label="Tiến độ gọi vốn (%)">
                 <div style={{ position: 'relative' }}>
                   <input type="number" min="0" max="100" value={form.progress_percent}
-                    onChange={e => setForm(p => ({ ...p, progress_percent: parseInt(e.target.value) }))}
+                    onFocus={e => e.target.select()}
+                    onChange={e => setForm(p => ({ ...p, progress_percent: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
                     style={{ ...inputStyle, paddingRight: 40 }} />
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#374151', fontWeight: 700 }}>%</span>
                 </div>
               </Field>
             </div>
             <Field label="Phương pháp chia lợi nhuận">
-              <textarea value={form.profit_method} disabled
-                rows={3} style={{ ...inputStyle, resize: 'none', background: '#F3F4F6', cursor: 'not-allowed' }} />
+              <textarea
+                value={form.profit_method || ''}
+                onChange={e => setForm(p => ({ ...p, profit_method: e.target.value }))}
+                rows={3}
+                style={{ ...inputStyle, resize: 'vertical' }}
+                placeholder="Nhập mô tả phương pháp chia lợi nhuận..."
+              />
             </Field>
           </div>
         </div>
@@ -268,7 +266,7 @@ export default function AdminEditProjectPage({ params }: { params: Promise<{ id:
               cursor: loading ? 'not-allowed' : 'pointer', marginTop: 20,
               boxShadow: '0 4px 14px rgba(200,16,46,0.25)'
             }}>
-              {loading ? 'Đang kết nối Supabase...' : '💾 Cập nhật lên Supabase'}
+              {loading ? 'Đang lưu dự án...' : '💾 Lưu dự án'}
             </button>
           </div>
         </div>

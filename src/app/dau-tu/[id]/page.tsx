@@ -282,23 +282,40 @@ export default function InvestDetailPage({ params }: { params: Promise<{ id: str
         borderTop: '1px solid #E5E5E5',
         zIndex: 50
       }}>
-        <Link href={`/dau-tu/${project.id}/order`} style={{ textDecoration: 'none' }}>
-          <button style={{
+        {project.status === 'paused' || project.status === 'ended' ? (
+          <button disabled style={{
             width: '100%',
-            background: 'linear-gradient(135deg, #C8102E 0%, #A00D25 100%)',
+            background: '#9CA3AF',
             color: 'white',
             border: 'none',
             borderRadius: 14,
             padding: '17px',
             fontSize: 17,
             fontWeight: 800,
-            cursor: 'pointer',
-            boxShadow: '0 6px 20px rgba(200,16,46,0.35)',
+            cursor: 'not-allowed',
             letterSpacing: 0.5
           }}>
-            🚀 Đầu tư ngay
+            ⏸ Dự án đang tạm dừng
           </button>
-        </Link>
+        ) : (
+          <Link href={`/dau-tu/${project.id}/order`} style={{ textDecoration: 'none' }}>
+            <button style={{
+              width: '100%',
+              background: 'linear-gradient(135deg, #C8102E 0%, #A00D25 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 14,
+              padding: '17px',
+              fontSize: 17,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 6px 20px rgba(200,16,46,0.35)',
+              letterSpacing: 0.5
+            }}>
+              🚀 Đầu tư ngay
+            </button>
+          </Link>
+        )}
       </div>
     </div>
   )
