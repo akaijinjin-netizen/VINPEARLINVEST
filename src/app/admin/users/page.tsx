@@ -224,17 +224,27 @@ export default function AdminUsersPage() {
 
     try {
       const supabase = createClient()
-      await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', selectedUser.id)
+      const { error: walletErr } = await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', selectedUser.id)
+      if (walletErr) {
+        alert('❌ Lỗi cập nhật số dư: ' + walletErr.message)
+        return
+      }
       
       // Save adjustment details to database
-      await supabase.from('balance_adjustments').insert({
+      const { error: adjErr } = await supabase.from('balance_adjustments').insert({
         user_id: selectedUser.id,
         amount: Math.abs(delta),
         type: type,
         reason: adjustReason.trim() || (type === 'add' ? 'Cộng tiền từ hệ thống' : 'Trừ tiền từ hệ thống')
       })
-    } catch (e) {
-      console.log('Local wallet update:', e)
+
+      if (adjErr) {
+        alert('⚠️ Lỗi ghi nhận lịch sử RLS: ' + adjErr.message + '\n\n(Lưu ý: Anh cần chạy lệnh SQL "DISABLE ROW LEVEL SECURITY" cho bảng balance_adjustments trên Supabase SQL Editor)')
+      } else {
+        alert(type === 'add' ? '✅ Cộng tiền thành công!' : '✅ Trừ tiền thành công!')
+      }
+    } catch (e: any) {
+      alert('❌ Lỗi hệ thống: ' + (e?.message || e))
     }
 
     setSelectedUser(null)
