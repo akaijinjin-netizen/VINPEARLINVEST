@@ -38,7 +38,7 @@ export default function AdminWithdrawalsPage() {
       const supabase = createClient()
       const { data: withData, error } = await supabase
         .from('withdrawals')
-        .select('*, profiles(phone, full_name)')
+        .select('*, profiles!withdrawals_user_id_fkey(phone, full_name)')
         .order('created_at', { ascending: false })
 
       if (!error && withData) {

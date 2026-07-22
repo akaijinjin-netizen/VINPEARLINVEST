@@ -19,7 +19,7 @@ async function main() {
   console.log("Checking deposits...");
   const { data: deposits, error: depErr } = await supabase
     .from('deposits')
-    .select('*');
+    .select('*, profiles!deposits_user_id_fkey(phone, full_name)');
   
   if (depErr) {
     console.error("Deposits Error:", depErr);
@@ -30,7 +30,7 @@ async function main() {
   console.log("\nChecking withdrawals...");
   const { data: withdrawals, error: withErr } = await supabase
     .from('withdrawals')
-    .select('*');
+    .select('*, profiles!withdrawals_user_id_fkey(phone, full_name)');
 
   if (withErr) {
     console.error("Withdrawals Error:", withErr);

@@ -107,7 +107,7 @@ export default function AdminDashboard() {
       // 2. Fetch pending deposits
       const { data: rawDeps } = await supabase
         .from('deposits')
-        .select('*, profiles(phone, full_name)')
+        .select('*, profiles!deposits_user_id_fkey(phone, full_name)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
       // 3. Fetch pending withdrawals
       const { data: rawWiths } = await supabase
         .from('withdrawals')
-        .select('*, profiles(phone, full_name)')
+        .select('*, profiles!withdrawals_user_id_fkey(phone, full_name)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 

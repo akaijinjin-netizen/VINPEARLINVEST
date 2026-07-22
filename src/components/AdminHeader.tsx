@@ -43,7 +43,7 @@ export default function AdminHeader() {
       // 1. Fetch pending deposits
       const { data: deps } = await supabase
         .from('deposits')
-        .select('*, profiles(phone, full_name)')
+        .select('*, profiles!deposits_user_id_fkey(phone, full_name)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
@@ -67,7 +67,7 @@ export default function AdminHeader() {
       // 2. Fetch pending withdrawals
       const { data: withs } = await supabase
         .from('withdrawals')
-        .select('*, profiles(phone, full_name)')
+        .select('*, profiles!withdrawals_user_id_fkey(phone, full_name)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 

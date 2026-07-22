@@ -39,7 +39,7 @@ export default function AdminDepositsPage() {
       const supabase = createClient()
       const { data: depData, error } = await supabase
         .from('deposits')
-        .select('*, profiles(phone, full_name)')
+        .select('*, profiles!deposits_user_id_fkey(phone, full_name)')
         .order('created_at', { ascending: false })
 
       if (!error && depData) {
