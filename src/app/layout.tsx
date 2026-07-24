@@ -4,9 +4,9 @@ import AuthGuard from "@/components/AuthGuard";
 import SecurityGuard from "@/components/SecurityGuard";
 
 export const metadata: Metadata = {
-  title: "Vingroup QPL - Nền tảng đầu tư nghỉ dưỡng",
-  description: "Đầu tư thông minh vào các dự án nghỉ dưỡng Vingroup QPL cao cấp - Lợi nhuận hấp dẫn, bảo vệ vốn toàn phần",
-  keywords: "Vingroup QPL, đầu tư, nghỉ dưỡng, resort, Vingroup, lợi nhuận",
+  title: "QUỸ HUY ĐỘNG VỐN TẬP ĐOÀN VINGROUP",
+  description: "Hệ thống đầu tư thông minh và hiệu quả - Quỹ huy động vốn Tập đoàn Vingroup, bảo vệ vốn toàn phần",
+  keywords: "Vingroup, Quỹ huy động vốn, đầu tư, Vingroup QPL, lợi nhuận",
   icons: {
     icon: "/favicon.ico?v=5",
     shortcut: "/favicon.ico?v=5",
