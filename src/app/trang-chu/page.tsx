@@ -166,7 +166,7 @@ export default function HomePage() {
           <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 4 }}>
             <span style={{ color: '#F0C040' }}>V</span>INGROUP
           </div>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>Nền tảng đầu tư nghỉ dưỡng cao cấp</div>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Quỹ huy động vốn Tập đoàn Vingroup</div>
         </div>
       </div>
 
