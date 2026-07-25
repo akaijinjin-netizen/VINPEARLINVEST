@@ -72,6 +72,10 @@ export default function AdminUsersPage() {
   async function fetchUsersFromSupabase() {
     try {
       const supabase = createClient()
+      
+      // Tự động kiểm tra và xử lý hoàn gốc + lãi cho tất cả các gói hết hạn của mọi khách hàng
+      await supabase.rpc('process_expired_investments')
+
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*, wallets(*)')

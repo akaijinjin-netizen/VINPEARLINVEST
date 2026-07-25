@@ -16,6 +16,10 @@ export default function AdminInvestmentsPage() {
     async function fetchInvestments() {
       try {
         const supabase = createClient()
+        
+        // Tự động kiểm tra và xử lý hoàn gốc + lãi cho tất cả các gói hết hạn của mọi khách hàng
+        await supabase.rpc('process_expired_investments')
+
         const { data, error } = await supabase
           .from('investments')
           .select(`
