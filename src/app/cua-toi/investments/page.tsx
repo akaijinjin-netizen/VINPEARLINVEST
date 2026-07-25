@@ -60,6 +60,13 @@ export default function UserInvestmentsPage() {
       }
     }
     fetchUserInvestments()
+
+    // Chạy ngầm quét tự động cập nhật danh sách gói đầu tư mỗi 10 giây
+    const interval = setInterval(() => {
+      fetchUserInvestments()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const filtered = investments.filter(item => {

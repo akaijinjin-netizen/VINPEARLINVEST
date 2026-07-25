@@ -112,6 +112,13 @@ export default function HomePage() {
     }
 
     loadUserData()
+
+    // Chạy ngầm tự động cập nhật số dư, số gói đang chạy, và lợi nhuận mỗi 10 giây
+    const interval = setInterval(() => {
+      loadUserData()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   return (
