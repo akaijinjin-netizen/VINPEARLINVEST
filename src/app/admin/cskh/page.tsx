@@ -291,12 +291,85 @@ export default function AdminCskhPage() {
                         }}>
                           {msg.image_url ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              <img
-                                src={msg.image_url}
-                                alt="Ảnh đính kèm"
-                                style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
-                              />
-                              {msg.message !== '📷 Gửi một ảnh đính kèm' && <div>{msg.message}</div>}
+                              <a href={msg.image_url} target="_blank" rel="noreferrer" title="Click để xem ảnh kích thước gốc">
+                                <img
+                                  src={msg.image_url}
+                                  alt="Ảnh đính kèm"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: 220,
+                                    borderRadius: 8,
+                                    cursor: 'pointer',
+                                    display: 'block',
+                                    transition: 'transform 0.15s ease'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                />
+                              </a>
+                              
+                              {/* Image action buttons */}
+                              <div style={{
+                                display: 'flex',
+                                gap: 12,
+                                marginTop: 4,
+                                borderTop: '1px solid #E2E8F0',
+                                paddingTop: 6,
+                                flexWrap: 'wrap'
+                              }}>
+                                <a
+                                  href={msg.image_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{ fontSize: 11, color: '#0284C7', textDecoration: 'none', fontWeight: 700 }}
+                                >
+                                  🔍 Phóng to
+                                </a>
+                                <a
+                                  href={msg.image_url}
+                                  download={`hoa_don_${msg.id}.png`}
+                                  style={{ fontSize: 11, color: '#16A34A', textDecoration: 'none', fontWeight: 700 }}
+                                  onClick={async (e) => {
+                                    e.preventDefault()
+                                    try {
+                                      const response = await fetch(msg.image_url!)
+                                      const blob = await response.blob()
+                                      const url = window.URL.createObjectURL(blob)
+                                      const a = document.createElement('a')
+                                      a.href = url
+                                      a.download = `cskh_upload_${msg.id}.png`
+                                      document.body.appendChild(a)
+                                      a.click()
+                                      document.body.removeChild(a)
+                                      window.URL.revokeObjectURL(url)
+                                    } catch (err) {
+                                      window.open(msg.image_url, '_blank')
+                                    }
+                                  }}
+                                >
+                                  📥 Tải về
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(msg.image_url || '')
+                                    alert('Đã sao chép link ảnh vào bộ nhớ tạm!')
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    fontSize: 11,
+                                    color: '#4F46E5',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  📋 Copy Link
+                                </button>
+                              </div>
+
+                              {msg.message !== '📷 Gửi một ảnh đính kèm' && <div style={{ marginTop: 4 }}>{msg.message}</div>}
                             </div>
                           ) : (
                             msg.message
