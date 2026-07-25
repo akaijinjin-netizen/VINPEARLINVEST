@@ -114,6 +114,13 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsersFromSupabase()
+    
+    // Tự động làm mới danh sách người dùng mỗi 10 giây
+    const interval = setInterval(() => {
+      fetchUsersFromSupabase()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const filtered = users.filter(u =>

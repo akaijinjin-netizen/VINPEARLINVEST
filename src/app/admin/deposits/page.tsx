@@ -64,6 +64,13 @@ export default function AdminDepositsPage() {
 
   useEffect(() => {
     fetchDepositsFromSupabase()
+
+    // Tự động làm mới danh sách nạp tiền mỗi 10 giây
+    const interval = setInterval(() => {
+      fetchDepositsFromSupabase()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const approve = async (id: string) => {

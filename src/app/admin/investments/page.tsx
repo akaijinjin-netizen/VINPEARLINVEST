@@ -35,6 +35,13 @@ export default function AdminInvestmentsPage() {
       }
     }
     fetchInvestments()
+
+    // Tự động làm mới danh sách lệnh đầu tư mỗi 10 giây
+    const interval = setInterval(() => {
+      fetchInvestments()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const filtered = investments.filter(i => {

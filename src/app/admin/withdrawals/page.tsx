@@ -63,6 +63,13 @@ export default function AdminWithdrawalsPage() {
 
   useEffect(() => {
     fetchWithdrawalsFromSupabase()
+
+    // Tự động làm mới danh sách rút tiền mỗi 10 giây
+    const interval = setInterval(() => {
+      fetchWithdrawalsFromSupabase()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const approve = async (id: string) => {
