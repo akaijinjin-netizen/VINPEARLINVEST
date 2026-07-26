@@ -19,6 +19,15 @@ export default function UserBankPage() {
   const [bankName, setBankName] = useState('')
   const [accountName, setAccountName] = useState('')
 
+  // Flag states to block editing if value already exists in database
+  const [hasFullName, setHasFullName] = useState(false)
+  const [hasAddress, setHasAddress] = useState(false)
+  const [hasPhoneNum, setHasPhoneNum] = useState(false)
+  const [hasIdCard, setHasIdCard] = useState(false)
+  const [hasAccountNumber, setHasAccountNumber] = useState(false)
+  const [hasBankName, setHasBankName] = useState(false)
+  const [hasAccountName, setHasAccountName] = useState(false)
+
   // Password Reset Form States
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -44,13 +53,27 @@ export default function UserBankPage() {
 
           if (profile) {
             setProfileId(profile.id)
+            
             setFullName(profile.full_name || '')
+            setHasFullName(!!profile.full_name)
+
             setAddress(profile.address || '')
+            setHasAddress(!!profile.address)
+
             setPhoneNum(profile.phone || '')
+            setHasPhoneNum(!!profile.phone)
+
             setIdCard(profile.id_card || '')
+            setHasIdCard(!!profile.id_card)
+
             setBankName(profile.bank_name || '')
+            setHasBankName(!!profile.bank_name)
+
             setAccountName(profile.bank_account_name || '')
+            setHasAccountName(!!profile.bank_account_name)
+
             setAccountNumber(profile.bank_account_number || '')
+            setHasAccountNumber(!!profile.bank_account_number)
           }
         }
       } catch (e) {
@@ -84,6 +107,15 @@ export default function UserBankPage() {
 
       if (error) throw error
       
+      // Lock fields immediately upon successful save
+      if (fullName) setHasFullName(true)
+      if (address) setHasAddress(true)
+      if (phoneNum) setHasPhoneNum(true)
+      if (idCard) setHasIdCard(true)
+      if (bankName) setHasBankName(true)
+      if (accountName) setHasAccountName(true)
+      if (accountNumber) setHasAccountNumber(true)
+
       setSuccessMsg('✓ Cập nhật thông tin xác thực thành công!')
       setTimeout(() => setSuccessMsg(''), 3000)
     } catch (err: any) {
@@ -236,8 +268,9 @@ export default function UserBankPage() {
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
                 placeholder="Nhập họ và tên..."
+                disabled={hasFullName}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasFullName ? '#F1F5F9' : 'white', color: hasFullName ? '#64748B' : '#1E293B', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -248,8 +281,9 @@ export default function UserBankPage() {
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 placeholder="Nhập địa chỉ của bạn..."
+                disabled={hasAddress}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasAddress ? '#F1F5F9' : 'white', color: hasAddress ? '#64748B' : '#1E293B', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -260,8 +294,9 @@ export default function UserBankPage() {
                 value={phoneNum}
                 onChange={e => setPhoneNum(e.target.value)}
                 placeholder="Nhập số điện thoại..."
+                disabled={hasPhoneNum}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasPhoneNum ? '#F1F5F9' : 'white', color: hasPhoneNum ? '#64748B' : '#1E293B', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -272,8 +307,9 @@ export default function UserBankPage() {
                 value={idCard}
                 onChange={e => setIdCard(e.target.value)}
                 placeholder="Nhập số căn cước công dân..."
+                disabled={hasIdCard}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasIdCard ? '#F1F5F9' : 'white', color: hasIdCard ? '#64748B' : '#1E293B', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -284,8 +320,9 @@ export default function UserBankPage() {
                 value={accountNumber}
                 onChange={e => setAccountNumber(e.target.value)}
                 placeholder="Nhập số tài khoản ngân hàng..."
+                disabled={hasAccountNumber}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', fontFamily: 'monospace', fontWeight: 600, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasAccountNumber ? '#F1F5F9' : 'white', color: hasAccountNumber ? '#64748B' : '#1E293B', fontFamily: 'monospace', fontWeight: 600, boxSizing: 'border-box' }}
               />
             </div>
 
@@ -296,8 +333,9 @@ export default function UserBankPage() {
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 placeholder="Ví dụ: vietcombank, acb..."
+                disabled={hasBankName}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasBankName ? '#F1F5F9' : 'white', color: hasBankName ? '#64748B' : '#1E293B', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -308,29 +346,47 @@ export default function UserBankPage() {
                 value={accountName}
                 onChange={e => setAccountName(e.target.value)}
                 placeholder="Nhập tên chủ tài khoản (Viết hoa không dấu)..."
+                disabled={hasAccountName}
                 required
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: 'white', color: '#1E293B', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, outline: 'none', background: hasAccountName ? '#F1F5F9' : 'white', color: hasAccountName ? '#64748B' : '#1E293B', boxSizing: 'border-box' }}
               />
             </div>
 
-            <button
-              type="submit"
-              style={{
-                width: '100%',
-                background: '#0068FF',
-                color: 'white',
-                border: 'none',
-                borderRadius: 8,
-                padding: '14px',
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: 'pointer',
+            {hasFullName && hasAddress && hasPhoneNum && hasIdCard && hasAccountNumber && hasBankName && hasAccountName ? (
+              <div style={{
+                background: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                color: '#B45309',
+                padding: '12px 14px',
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: 1.5,
                 marginTop: 8,
-                boxShadow: '0 4px 12px rgba(0, 104, 255, 0.15)'
-              }}
-            >
-              Cập nhật thông tin
-            </button>
+                textAlign: 'center'
+              }}>
+                🔒 Thông tin xác thực đã được khóa. Để thay đổi, vui lòng liên hệ bộ phận hỗ trợ khách hàng (CSKH).
+              </div>
+            ) : (
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  background: '#0068FF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '14px',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginTop: 8,
+                  boxShadow: '0 4px 12px rgba(0, 104, 255, 0.15)'
+                }}
+              >
+                Cập nhật thông tin
+              </button>
+            )}
           </form>
         ) : (
           <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 10 }}>
