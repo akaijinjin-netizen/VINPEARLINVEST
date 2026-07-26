@@ -115,32 +115,73 @@ function ChatContent() {
     }
   }
 
-  // 5. Handle image upload
+  // 5. Handle image upload with automatic client-side compression
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !phone) return
 
     setIsUploading(true)
-    const reader = new FileReader()
-    reader.onloadend = async () => {
-      const base64String = reader.result as string
+
+    try {
+      // Nén ảnh trực tiếp trên điện thoại khách hàng xuống ~100KB để mạng yếu vẫn tải lên tức thì
+      const compressedBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.readAsDataURL(file)
+        reader.onload = (event) => {
+          const img = new Image()
+          img.src = event.target?.result as string
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            let width = img.width
+            let height = img.height
+
+            // Giới hạn chiều rộng/cao tối đa 1000px để giữ nguyên độ sắc nét của hóa đơn
+            const MAX_WIDTH = 1000
+            const MAX_HEIGHT = 1000
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width
+                width = MAX_WIDTH
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height
+                height = MAX_HEIGHT
+              }
+            }
+
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            ctx?.drawImage(img, 0, 0, width, height)
+
+            // Nén thành định dạng JPEG chất lượng 65% (độ phân giải tối ưu, kích thước nhẹ tênh)
+            const base64 = canvas.toDataURL('image/jpeg', 0.65)
+            resolve(base64)
+          }
+          img.onerror = (err) => reject(err)
+        }
+        reader.onerror = (err) => reject(err)
+      })
+
       const supabase = createClient()
-      
       const { error } = await supabase
         .from('chat_messages')
         .insert({
           sender_phone: phone,
           sender_type: 'user',
           message: '📷 Gửi một ảnh đính kèm',
-          image_url: base64String
+          image_url: compressedBase64
         })
 
-      setIsUploading(false)
       if (error) {
         console.error('Error sending image:', error)
       }
+    } catch (err) {
+      console.error('Image compression failed:', err)
+    } finally {
+      setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   return (
