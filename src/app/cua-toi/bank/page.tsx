@@ -92,22 +92,45 @@ export default function UserBankPage() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName,
-          address: address,
-          phone: phoneNum,
-          id_card: idCard,
-          bank_name: bankName,
-          bank_account_name: accountName,
-          bank_account_number: accountNumber
-        })
-        .eq('id', profileId)
 
-      if (error) throw error
+      // Fetch the latest profile data from the database to perform a bulletproof safety check
+      const { data: currentProfile, error: fetchErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .single()
+
+      if (fetchErr) throw fetchErr
+
+      if (currentProfile) {
+        const updatePayload: any = {}
+        
+        // Only include fields in the update payload if they are currently null or empty in the database
+        if (!currentProfile.full_name) updatePayload.full_name = fullName
+        if (!currentProfile.address) updatePayload.address = address
+        // Note: phone is the login identifier, only allow if not set
+        if (!currentProfile.phone) updatePayload.phone = phoneNum
+        if (!currentProfile.id_card) updatePayload.id_card = idCard
+        if (!currentProfile.bank_name) updatePayload.bank_name = bankName
+        if (!currentProfile.bank_account_name) updatePayload.bank_account_name = accountName
+        if (!currentProfile.bank_account_number) updatePayload.bank_account_number = accountNumber
+
+        // If no fields need updating, abort
+        if (Object.keys(updatePayload).length === 0) {
+          setErrorMsg('⚠️ Thông tin của bạn đã được khóa từ trước!')
+          setTimeout(() => setErrorMsg(''), 4000)
+          return
+        }
+
+        const { error } = await supabase
+          .from('profiles')
+          .update(updatePayload)
+          .eq('id', profileId)
+
+        if (error) throw error
+      }
       
-      // Lock fields immediately upon successful save
+      // Update UI lock states immediately
       if (fullName) setHasFullName(true)
       if (address) setHasAddress(true)
       if (phoneNum) setHasPhoneNum(true)
