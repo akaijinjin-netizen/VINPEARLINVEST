@@ -66,6 +66,11 @@ export default function AdminCskhPage() {
 
     loadAllMessages()
 
+    // Dự phòng: Tự động tải lại danh sách cuộc trò chuyện mỗi 10 giây
+    const interval = setInterval(() => {
+      loadAllMessages()
+    }, 10000)
+
     // Subscribe to all incoming messages
     const channel = supabase
       .channel('admin_global_chat')
@@ -99,6 +104,7 @@ export default function AdminCskhPage() {
       .subscribe()
 
     return () => {
+      clearInterval(interval)
       supabase.removeChannel(channel)
     }
   }, [activePhone])
@@ -125,6 +131,15 @@ export default function AdminCskhPage() {
     }
 
     loadActiveChatHistory()
+
+    // Dự phòng: Tự động tải lại lịch sử chát của khách hàng đang chọn mỗi 5 giây
+    const interval = setInterval(() => {
+      loadActiveChatHistory()
+    }, 5000)
+
+    return () => {
+      clearInterval(interval)
+    }
   }, [activePhone])
 
   // 3. Scroll to bottom when active conversation messages load or update

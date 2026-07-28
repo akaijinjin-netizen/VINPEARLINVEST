@@ -61,6 +61,11 @@ function ChatContent() {
 
     loadChatHistory()
 
+    // Dự phòng: Tự động tải lại lịch sử chát mỗi 5 giây phòng trường hợp mất mạng/mất kết nối WebSocket realtime ngầm
+    const interval = setInterval(() => {
+      loadChatHistory()
+    }, 5000)
+
     // Setup realtime subscription
     const channel = supabase
       .channel(`chat_messages_${phone}`)
@@ -84,6 +89,7 @@ function ChatContent() {
       .subscribe()
 
     return () => {
+      clearInterval(interval)
       supabase.removeChannel(channel)
     }
   }, [phone])
