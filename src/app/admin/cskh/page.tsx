@@ -25,8 +25,116 @@ export default function AdminCskhPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Hàm nén ảnh bằng canvas trên trình duyệt xuống còn ~100KB giúp truyền tải siêu nhanh
+  const compressImageAndGetBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+
+          // Giới hạn chiều rộng/cao tối đa 1000px để giữ nguyên độ sắc nét của hóa đơn
+          const MAX_WIDTH = 1000
+          const MAX_HEIGHT = 1000
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height
+              height = MAX_HEIGHT
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+
+          // Nén thành định dạng JPEG chất lượng 65% (dung lượng nhỏ, độ nét cao)
+          const base64 = canvas.toDataURL('image/jpeg', 0.65)
+          resolve(base64)
+        }
+        img.onerror = (err) => reject(err)
+      }
+      reader.onerror = (err) => reject(err)
+    })
+  }
+
+  // Hàm gửi tin nhắn ảnh của admin lên Database
+  const sendAdminImageMessage = async (base64Data: string) => {
+    if (!activePhone) return
+    setIsUploading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          sender_phone: activePhone,
+          sender_type: 'admin',
+          message: '📷 Gửi một ảnh đính kèm',
+          image_url: base64Data
+        })
+
+      if (error) throw error
+    } catch (err) {
+      console.error('Error sending admin image message:', err)
+      alert('Không thể gửi ảnh! Vui lòng thử lại.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  // Xử lý khi Admin nhấn nút và chọn file ảnh từ máy tính
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const base64 = await compressImageAndGetBase64(file)
+      await sendAdminImageMessage(base64)
+    } catch (err) {
+      console.error(err)
+    }
+    // Reset file input để có thể chọn lại cùng 1 file
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Xử lý khi Admin dán ảnh (Ctrl+V) vào ô nhập liệu
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.indexOf('image') !== -1) {
+        // Đây là ảnh được copy từ clipboard!
+        const file = item.getAsFile()
+        if (!file) continue
+
+        e.preventDefault() // Ngăn hành vi dán text mặc định
+        
+        try {
+          const base64 = await compressImageAndGetBase64(file)
+          await sendAdminImageMessage(base64)
+        } catch (err) {
+          console.error('Failed to paste/compress image:', err)
+        }
+        break
+      }
+    }
+  }
 
   // 1. Fetch conversations and load initial list
   useEffect(() => {
@@ -400,6 +508,37 @@ export default function AdminCskhPage() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Trạng thái đang tải ảnh lên */}
+              {isUploading && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 90,
+                  right: 30,
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  zIndex: 20,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  ⏳ Đang tải ảnh lên...
+                </div>
+              )}
+
+              {/* Hidden file input for admin image upload */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleImageFileChange}
+              />
+
               {/* Reply Form */}
               <form
                 onSubmit={handleSendResponse}
@@ -408,14 +547,42 @@ export default function AdminCskhPage() {
                   background: 'white',
                   borderTop: '1px solid #E2E8F0',
                   display: 'flex',
-                  gap: 12
+                  gap: 12,
+                  alignItems: 'center',
+                  position: 'relative'
                 }}
               >
+                {/* Nút gửi hình ảnh */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    background: '#F1F5F9',
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: 8,
+                    width: 42,
+                    height: 42,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#E2E8F0'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#F1F5F9'}
+                  title="Tải ảnh lên hoặc bấm Ctrl+V để dán ảnh"
+                >
+                  📷
+                </button>
+
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`Phản hồi số điện thoại ${activePhone}...`}
+                  onPaste={handlePaste}
+                  placeholder={`Phản hồi số điện thoại ${activePhone}... (Hỗ trợ Ctrl+V dán ảnh)`}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -436,7 +603,12 @@ export default function AdminCskhPage() {
                     padding: '10px 20px',
                     fontSize: 13,
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    height: 42,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
                   }}
                 >
                   Gửi phản hồi
