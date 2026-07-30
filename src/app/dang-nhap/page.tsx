@@ -38,29 +38,53 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient()
-      const { data: profile } = await supabase
+      
+      // 1. Lấy thông tin tài khoản từ Database để xác thực đầy đủ
+      const { data: profile, error: queryError } = await supabase
         .from('profiles')
-        .select('status')
-        .eq('phone', phone)
+        .select('status, password')
+        .eq('phone', phone.trim())
         .maybeSingle()
 
-      if (profile && profile.status === 'locked') {
+      if (queryError) {
+        throw queryError
+      }
+
+      // 2. Kiểm tra nếu số điện thoại này không tồn tại trên hệ thống (hoặc đã bị xóa)
+      if (!profile) {
+        setError('⚠️ Số điện thoại đăng nhập không tồn tại!')
+        setLoading(false)
+        return
+      }
+
+      // 3. Kiểm tra xem mật khẩu nhập vào có trùng khớp với Database không
+      if (profile.password !== password) {
+        setError('⚠️ Mật khẩu đăng nhập không chính xác!')
+        setLoading(false)
+        return
+      }
+
+      // 4. Kiểm tra tài khoản bị khóa
+      if (profile.status === 'locked') {
         setError('⚠️ Tài khoản này đã bị KHÓA bởi Quản trị viên! Vui lòng liên hệ Bộ phận CSKH.')
         setLoading(false)
         return
       }
-    } catch (err) {
-      console.log('Login status check fallback:', err)
-    }
 
-    // Save login state in localStorage
-    localStorage.setItem('isLoggedIn', 'true')
-    localStorage.setItem('userPhone', phone || '0987654321')
-    
-    setTimeout(() => {
+      // Đăng nhập thành công -> Lưu session
+      localStorage.setItem('isLoggedIn', 'true')
+      localStorage.setItem('userPhone', phone.trim())
+      
+      setTimeout(() => {
+        setLoading(false)
+        window.location.href = '/trang-chu'
+      }, 600)
+
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError('⚠️ Có lỗi xảy ra trong quá trình đăng nhập. Vui lòng thử lại!')
       setLoading(false)
-      window.location.href = '/trang-chu'
-    }, 600)
+    }
   }
 
   const handleSendResetRequest = async (e: React.FormEvent) => {
