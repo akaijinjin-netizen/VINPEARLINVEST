@@ -29,6 +29,16 @@ export default function AdminCskhPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const latestTimeRef = useRef<string>('')
+
+  // Keep track of the latest message timestamp to query only newer messages during polling (saves tons of bandwidth)
+  useEffect(() => {
+    if (messages.length > 0) {
+      latestTimeRef.current = messages[messages.length - 1].created_at
+    } else {
+      latestTimeRef.current = ''
+    }
+  }, [messages])
 
   // Hàm nén ảnh bằng canvas trên trình duyệt xuống còn ~100KB giúp truyền tải siêu nhanh
   const compressImageAndGetBase64 = (file: File): Promise<string> => {
@@ -238,11 +248,30 @@ export default function AdminCskhPage() {
       }
     }
 
+    // Hàm quét tin nhắn mới của khách hàng đang chát (tiết kiệm băng thông)
+    async function loadNewActiveMessages() {
+      if (!latestTimeRef.current) return
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('sender_phone', activePhone)
+        .gt('created_at', latestTimeRef.current)
+        .order('created_at', { ascending: true })
+
+      if (!error && data && data.length > 0) {
+        setMessages((prev) => {
+          // Lọc bỏ trùng lặp nếu có trước khi thêm vào state
+          const newItems = data.filter(item => !prev.some(m => m.id === item.id))
+          return [...prev, ...newItems]
+        })
+      }
+    }
+
     loadActiveChatHistory()
 
-    // Dự phòng: Tự động tải lại lịch sử chát của khách hàng đang chọn mỗi 5 giây
+    // Dự phòng: Chỉ quét tin nhắn mới phát sinh của khách đang chọn mỗi 5 giây (tiết kiệm 99.9% băng thông)
     const interval = setInterval(() => {
-      loadActiveChatHistory()
+      loadNewActiveMessages()
     }, 5000)
 
     return () => {

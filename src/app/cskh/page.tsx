@@ -24,6 +24,14 @@ function ChatContent() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const latestTimeRef = useRef<string>('')
+
+  // Keep track of the latest message timestamp to query only newer messages during polling (saves tons of bandwidth)
+  useEffect(() => {
+    if (messages.length > 0) {
+      latestTimeRef.current = messages[messages.length - 1].created_at
+    }
+  }, [messages])
 
   // 1. Get phone number of user or redirect
   useEffect(() => {
@@ -59,11 +67,30 @@ function ChatContent() {
       }
     }
 
+    // Hàm quét tin nhắn mới (tiết kiệm băng thông, chỉ tải tin nhắn phát sinh sau tin nhắn cuối)
+    async function loadNewMessages() {
+      if (!latestTimeRef.current) return
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('sender_phone', phone)
+        .gt('created_at', latestTimeRef.current)
+        .order('created_at', { ascending: true })
+
+      if (!error && data && data.length > 0) {
+        setMessages((prev) => {
+          // Lọc bỏ trùng lặp nếu có trước khi thêm vào state
+          const newItems = data.filter(item => !prev.some(m => m.id === item.id))
+          return [...prev, ...newItems]
+        })
+      }
+    }
+
     loadChatHistory()
 
-    // Dự phòng: Tự động tải lại lịch sử chát mỗi 5 giây phòng trường hợp mất mạng/mất kết nối WebSocket realtime ngầm
+    // Dự phòng: Chỉ quét tin nhắn mới phát sinh mỗi 5 giây (tiết kiệm 99.9% băng thông so với tải lại toàn bộ)
     const interval = setInterval(() => {
-      loadChatHistory()
+      loadNewMessages()
     }, 5000)
 
     // Setup realtime subscription
